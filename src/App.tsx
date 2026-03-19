@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Grid from './pages/Grid';
 import Season from './pages/Season';
+import Leaderboard from './pages/Leaderboard';
 import { AppProvider } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
@@ -18,6 +19,7 @@ function App() {
             <Route path="/" element={<Navigate to="/grid/march-maddle" replace />} />
             <Route path="/grid/:permalink" element={<Grid />} />
             <Route path="/season" element={<Season />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
           </Routes>
         </div>
       </BrowserRouter>

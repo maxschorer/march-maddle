@@ -5,6 +5,7 @@ import { useGrid } from '../contexts/GridContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabaseImageUrl } from '../utils/storage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
+import { calculateGuessPoints } from '../utils/scoring';
 
 interface GameOverModalProps {
   switchToDate: (date: string) => void;
@@ -123,12 +124,33 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                 </div>
             </div>
             
+            {/* Points earned */}
+            {gameWon && (
+              <div className="text-center py-2 bg-gray-50 rounded-lg">
+                <span className="text-2xl font-bold text-orange-500">
+                  +{calculateGuessPoints(guesses.length, true)}
+                </span>
+                <span className="text-sm text-gray-500 ml-1">pts</span>
+                {user && (
+                  <span className="text-xs text-gray-400 block mt-1">
+                    + speed bonus calculated at end of day
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3 justify-center">
               <button
                 onClick={shareResults}
                 className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
               >
                 Share 🏀
+              </button>
+              <button
+                onClick={() => { handleClose(); navigate('/leaderboard'); }}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
+              >
+                🏆 Standings
               </button>
             </div>
             
@@ -144,8 +166,8 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                 onClick={openLoginModal}
                 className="w-full text-center text-sm py-2 transition-colors"
               >
-                <span className="text-gray-500">Want to play past games? </span>
-                <span className="text-orange-500 font-medium hover:text-orange-600">Sign in free →</span>
+                <span className="text-gray-500">Sign in to track your score on the leaderboard </span>
+                <span className="text-orange-500 font-medium hover:text-orange-600">→</span>
               </button>
             )}
             

@@ -8,6 +8,7 @@ import { useGrid } from './GridContext';
 import { useGridStorage } from '../utils/gridStorage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
 import { getPSTDate } from '../utils/dateUtils';
+import { calculateGuessPoints } from '../utils/scoring';
 
 interface GameContextType {
   targetEntity: Entity | null;
@@ -166,7 +167,9 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
       true
     );
     
-    const text = `March Maddle 🏀 #${gameNumber}\n${gameWon ? guesses.length : 'X'}/${maxGuesses} ${performanceEmoji}\n\n${emoji}\n\nPlay at https://marchmaddle.com!`;
+    const points = gameWon ? calculateGuessPoints(guesses.length, true) : 0;
+    const pointsLine = gameWon ? `\n${points}+ pts` : '';
+    const text = `March Maddle 🏀 #${gameNumber}\n${gameWon ? guesses.length : 'X'}/${maxGuesses} ${performanceEmoji}${pointsLine}\n\n${emoji}\n\nPlay at https://marchmaddle.com!`;
     
     navigator.clipboard.writeText(text)
       .then(() => alert('Results copied to clipboard!'))

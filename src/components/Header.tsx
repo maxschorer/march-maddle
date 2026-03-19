@@ -27,6 +27,9 @@ export default function Header() {
             <Link to="/" className="text-2xl font-bold">
               <span className="text-orange-500">March</span> Maddle <span className="text-lg">🏀</span>
             </Link>
+            <Link to="/leaderboard" className="text-sm text-gray-300 hover:text-white transition-colors">
+              🏆 Standings
+            </Link>
             {user && (
               <Link to="/season" className="text-sm text-gray-300 hover:text-white transition-colors">
                 My Season
