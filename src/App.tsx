@@ -1,26 +1,37 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import Grid from './pages/Grid';
+import Season from './pages/Season';
 import { AppProvider } from './contexts/AppContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginModal from './components/LoginModal';
 
 function App() {
+  const { isLoginModalOpen, closeLoginModal } = useAuth();
+  
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-white text-black flex flex-col">
-        <Header />
-        <Routes>
-          <Route path="/" element={<Navigate to="/grid/march-maddle" replace />} />
-          <Route path="/grid/:permalink" element={<Grid />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <div className="min-h-screen bg-white text-black flex flex-col">
+          <Header />
+          <Routes>
+            <Route path="/" element={<Navigate to="/grid/march-maddle" replace />} />
+            <Route path="/grid/:permalink" element={<Grid />} />
+            <Route path="/season" element={<Season />} />
+          </Routes>
+        </div>
+      </BrowserRouter>
+      <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
+    </>
   );
 }
 
 export default function AppWrapper() {
   return (
-    <AppProvider>
-      <App />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <App />
+      </AppProvider>
+    </AuthProvider>
   );
 }

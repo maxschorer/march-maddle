@@ -1,5 +1,7 @@
 import { GameState } from '../types/Game';
 import { Entity } from '../types/Entity';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface GridStorageAPI {
   initGame: (gridId: number, targetEntity: Entity, dailyTargetId: number | null) => Promise<GameState>;
@@ -45,3 +47,70 @@ export const localGridStorage: GridStorageAPI = {
     return gameState;
   }
 };
+
+export const supabaseGridStorage: GridStorageAPI = {
+  async getGame(dailyTargetId: number): Promise<GameState | null> {
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+    if (!userId) throw new Error('User not authenticated');
+    const { data, error } = await supabase
+      .from('games')
+      .select('id, guesses, target_entity, is_winner, is_complete, daily_target_id, grid_id')
+      .eq('user_id', userId)
+      .eq('daily_target_id', dailyTargetId)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    if (!data) return null;
+    return {
+      id: data.id,
+      guesses: data.guesses,
+      gameWon: data.is_winner,
+      gameOver: data.is_complete,
+      targetEntity: data.target_entity,
+      gridId: data.grid_id,
+    };
+  },
+  async updateGame(gameState: GameState): Promise<void> {
+    const { guesses, gameWon, gameOver, id } = gameState;
+    const { error } = await supabase
+      .from('games')
+      .update({
+        guesses,
+        is_winner: gameWon,
+        is_complete: gameOver,
+        num_guesses: guesses.length,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    if (error) throw error;
+  },
+  async initGame(gridId: number, targetEntity: Entity, dailyTargetId: number | null): Promise<GameState> {
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id;
+    if (!userId) throw new Error('User not authenticated');
+    const { data, error } = await supabase
+      .from('games')
+      .insert([{
+        user_id: userId,
+        daily_target_id: dailyTargetId,
+        grid_id: gridId,
+        target_entity: targetEntity,
+      }])
+      .select()
+      .single();
+    if (error) throw error;
+    return {
+      id: data.id,
+      guesses: data.guesses || [],
+      gameWon: data.is_winner || false,
+      gameOver: data.is_complete || false,
+      targetEntity: data.target_entity,
+      gridId: data.grid_id,
+    };
+  }
+};
+
+export function useGridStorage(): GridStorageAPI {
+  const { user } = useAuth();
+  return user ? supabaseGridStorage : localGridStorage;
+}

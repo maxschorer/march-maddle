@@ -5,7 +5,7 @@ import { Guess } from '../types/Guess';
 import { getTarget } from '../data/entities';
 import { compareAttributes } from '../utils/gameUtils';
 import { useGrid } from './GridContext';
-import { localGridStorage } from '../utils/gridStorage';
+import { useGridStorage } from '../utils/gridStorage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
 import { getPSTDate } from '../utils/dateUtils';
 
@@ -46,6 +46,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
   const [playMusic, setPlayMusic] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { maxGuesses } = useGrid();
+  const gridStorage = useGridStorage();
 
   // Reset game state when date changes
   useEffect(() => {
@@ -67,7 +68,6 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
           return;
         }
 
-        // Load today's target entity
         const target = await getTarget(gridEntities, grid.id, ds);
         if (!target || !target.entity) {
           return;
@@ -75,10 +75,9 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
         setTargetEntity(target.entity);
         setGameNumber(target.number);
 
-        // Hydrate state from localStorage
-        let savedState = await localGridStorage.getGame(target.id);
+        let savedState = await gridStorage.getGame(target.id);
         if (!savedState) {
-          savedState = await localGridStorage.initGame(grid.id, target.entity, target.id);
+          savedState = await gridStorage.initGame(grid.id, target.entity, target.id);
         }
         setGameId(savedState.id);
         if (savedState) {
@@ -105,7 +104,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
   useEffect(() => {
     const updateGameState = async () => {
       if (!gameId || !grid.id || guesses.length === 0 || !targetEntity) return;
-      await localGridStorage.updateGame({
+      await gridStorage.updateGame({
         guesses,
         gameOver,
         gameWon,

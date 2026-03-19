@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGame } from '../contexts/GameContext';
 import { useGrid } from '../contexts/GridContext';
+import { useAuth } from '../contexts/AuthContext';
 import { getSupabaseImageUrl } from '../utils/storage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
 
@@ -20,6 +22,8 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
     guesses 
   } = useGame();
   const { grid } = useGrid();
+  const { user, openLoginModal } = useAuth();
+  const navigate = useNavigate();
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -128,7 +132,24 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
               </button>
             </div>
             
-            <p className="text-center text-gray-500 text-sm mt-3">
+            {user ? (
+              <button
+                onClick={() => { handleClose(); navigate('/season'); }}
+                className="w-full text-center text-orange-500 hover:text-orange-600 text-sm font-medium py-2 transition-colors"
+              >
+                View Season Stats →
+              </button>
+            ) : (
+              <button
+                onClick={openLoginModal}
+                className="w-full text-center text-sm py-2 transition-colors"
+              >
+                <span className="text-gray-500">Want to play past games? </span>
+                <span className="text-orange-500 font-medium hover:text-orange-600">Sign in free →</span>
+              </button>
+            )}
+            
+            <p className="text-center text-gray-400 text-xs mt-1">
               Come back tomorrow for a new team!
             </p>
           </div>

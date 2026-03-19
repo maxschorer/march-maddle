@@ -2,6 +2,7 @@ import { useParams, Navigate, useSearchParams } from 'react-router-dom';
 import { GridProvider, useGrid } from '../contexts/GridContext';
 import { GameProvider, useGame } from '../contexts/GameContext';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 import GameBoard from '../components/GameBoard';
 import GameOverModal from '../components/GameOverModal';
 import GameHeader from '../components/GameHeader';
@@ -45,13 +46,36 @@ function GridContent() {
   );
 }
 
+function LoginGate() {
+  const { openLoginModal } = useAuth();
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+      <div className="text-5xl mb-4">🏀</div>
+      <h2 className="text-xl font-bold mb-2">Sign in to play past games</h2>
+      <p className="text-gray-500 mb-6 max-w-sm">
+        Create a free account to play historical March Maddle games, track your stats, and compete all season.
+      </p>
+      <button
+        onClick={openLoginModal}
+        className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-8 rounded-lg transition-colors"
+      >
+        Sign In to Play
+      </button>
+    </div>
+  );
+}
+
 export default function Grid() {
   const { permalink } = useParams<{ permalink: string }>();
   const { grids, loading } = useApp();
+  const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const ds = searchParams.get('ds');
   
   const grid = grids.find(g => g.permalink === permalink);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-lg">Loading...</div>
@@ -61,6 +85,12 @@ export default function Grid() {
 
   if (!grid) {
     return <Navigate to="/" replace />;
+  }
+
+  // Gate historical games behind login
+  const today = getPSTDate();
+  if (ds && ds !== today && !user) {
+    return <LoginGate />;
   }
 
   return (
