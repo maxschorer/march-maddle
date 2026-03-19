@@ -5,7 +5,7 @@ import { useGrid } from '../contexts/GridContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabaseImageUrl } from '../utils/storage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
-import { calculateGuessPoints } from '../utils/scoring';
+import { calculatePreviewScore, getQualityLabel } from '../utils/scoring';
 
 interface GameOverModalProps {
   switchToDate: (date: string) => void;
@@ -124,18 +124,15 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                 </div>
             </div>
             
-            {/* Points earned */}
+            {/* Quality score preview */}
             {gameWon && (
-              <div className="text-center py-2 bg-gray-50 rounded-lg">
-                <span className="text-2xl font-bold text-orange-500">
-                  +{calculateGuessPoints(guesses.length, true)}
+              <div className="text-center py-3 bg-gray-50 rounded-lg">
+                <div className="text-3xl font-bold text-orange-500">
+                  {calculatePreviewScore(guesses.length, true)}+ {getQualityLabel(calculatePreviewScore(guesses.length, true))}
+                </div>
+                <span className="text-xs text-gray-400">
+                  Quality score · final score includes timing
                 </span>
-                <span className="text-sm text-gray-500 ml-1">pts</span>
-                {user && (
-                  <span className="text-xs text-gray-400 block mt-1">
-                    + speed bonus calculated at end of day
-                  </span>
-                )}
               </div>
             )}
 

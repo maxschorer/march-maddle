@@ -1,55 +1,70 @@
 /**
- * March Maddle Scoring System
+ * March Maddle Quality Score
  * 
- * Points per game:
- * - Base:        100 points for a correct answer
- * - Guess bonus: +20 per unused guess (max 140 for a 1-guess win with 8 max)
- * - Speed bonus: Based on completion rank among all solvers that day
- *   - Top 10%:  +50 points
- *   - Top 25%:  +25 points  
- *   - Top 50%:  +10 points
- *   - Bottom 50%: +0 points
- * - Loss: 0 points
+ * Each game earns a quality score from 0-100.
+ * The exact formula is intentionally hidden from players.
+ * They just know: fewer guesses + faster + earlier = better.
  * 
- * Max possible: 290 points (1-guess win, top 10% speed)
- * Min win: 100 points (8-guess win, bottom 50%)
+ * Loss = 0.
  */
 
-export const MAX_GUESSES = 8;
-export const BASE_POINTS = 100;
-export const GUESS_BONUS_PER_UNUSED = 20;
-export const SPEED_TIERS = [
-  { threshold: 0.10, bonus: 50 },  // top 10%
-  { threshold: 0.25, bonus: 25 },  // top 25%
-  { threshold: 0.50, bonus: 10 },  // top 50%
-];
+const MAX_GUESSES = 8;
 
-export function calculateGuessPoints(numGuesses: number, won: boolean): number {
+// How many hours in a day the puzzle is available
+const HOURS_IN_DAY = 24;
+
+/**
+ * Calculate quality score for a completed game.
+ * 
+ * @param numGuesses - Number of guesses taken (1-8)
+ * @param won - Whether the player won
+ * @param solveTimeMinutes - Minutes after midnight PST when solved
+ * @param solveRank - Player's rank among all solvers (1 = first)
+ * @param totalSolvers - Total number of solvers for this puzzle
+ * @returns Quality score 0-100
+ */
+export function calculateQualityScore(
+  numGuesses: number,
+  won: boolean,
+  solveTimeMinutes: number,
+  solveRank: number,
+  totalSolvers: number,
+): number {
   if (!won) return 0;
-  const guessBonus = (MAX_GUESSES - numGuesses) * GUESS_BONUS_PER_UNUSED;
-  return BASE_POINTS + guessBonus;
+
+  // Guess component (0-50)
+  const guessScore = 50 * (1 - (numGuesses - 1) / (MAX_GUESSES - 1));
+
+  // Time component (0-25) — exponential decay over 24 hours
+  const hoursElapsed = Math.min(solveTimeMinutes / 60, HOURS_IN_DAY);
+  const timeScore = 25 * Math.exp(-0.15 * hoursElapsed);
+
+  // Rank component (0-25) — linear based on percentile
+  const rankScore = totalSolvers > 1
+    ? 25 * (1 - (solveRank - 1) / (totalSolvers - 1))
+    : 25; // first (and only) solver gets full rank points
+
+  return Math.round(guessScore + timeScore + rankScore);
 }
 
-export function calculateSpeedBonus(rank: number, totalSolvers: number): number {
-  if (totalSolvers === 0) return 0;
-  const percentile = rank / totalSolvers;
-  for (const tier of SPEED_TIERS) {
-    if (percentile <= tier.threshold) return tier.bonus;
-  }
-  return 0;
-}
-
-export function calculateTotalPoints(numGuesses: number, won: boolean, rank: number, totalSolvers: number): number {
-  const guessPoints = calculateGuessPoints(numGuesses, won);
-  const speedBonus = won ? calculateSpeedBonus(rank, totalSolvers) : 0;
-  return guessPoints + speedBonus;
-}
-
-export function getSpeedLabel(rank: number, totalSolvers: number): string {
-  if (totalSolvers === 0) return '';
-  const percentile = rank / totalSolvers;
-  if (percentile <= 0.10) return '⚡ Lightning';
-  if (percentile <= 0.25) return '🏃 Fast';
-  if (percentile <= 0.50) return '👍 Solid';
+/**
+ * Get a vague quality label (no numbers, just vibes).
+ */
+export function getQualityLabel(score: number): string {
+  if (score >= 90) return '🔥';
+  if (score >= 75) return '⚡';
+  if (score >= 50) return '💪';
+  if (score >= 25) return '👍';
+  if (score > 0) return '🫡';
   return '';
+}
+
+/**
+ * Calculate guess-only points for immediate display in the game over modal.
+ * This is a preview — final quality score includes time and rank,
+ * which are calculated server-side at end of day.
+ */
+export function calculatePreviewScore(numGuesses: number, won: boolean): number {
+  if (!won) return 0;
+  return Math.round(50 * (1 - (numGuesses - 1) / (MAX_GUESSES - 1)));
 }

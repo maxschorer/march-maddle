@@ -2,23 +2,23 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { calculateGuessPoints } from '../utils/scoring';
+import { calculateQualityScore, getQualityLabel } from '../utils/scoring';
+import { getPSTDate } from '../utils/dateUtils';
 
 interface LeaderboardEntry {
   userId: string;
   displayName: string;
-  totalPoints: number;
+  totalScore: number;
   gamesPlayed: number;
   gamesWon: number;
-  currentStreak: number;
-  avgGuesses: number;
+  avgScore: number;
 }
 
 interface DailyEntry {
   userId: string;
   displayName: string;
   numGuesses: number;
-  points: number;
+  score: number;
   completedAt: string;
   rank: number;
 }
@@ -44,7 +44,6 @@ export default function Leaderboard() {
   const loadLeaderboard = async () => {
     if (!grid) return;
     setLoading(true);
-
     try {
       if (tab === 'season') {
         await loadSeasonBoard();
@@ -61,7 +60,6 @@ export default function Leaderboard() {
   const loadSeasonBoard = async () => {
     if (!grid) return;
 
-    // Get all completed games for this grid
     const { data: games, error } = await supabase
       .from('games')
       .select('user_id, is_winner, num_guesses, daily_target_id, updated_at')
@@ -71,7 +69,6 @@ export default function Leaderboard() {
     if (error) throw error;
     if (!games) return;
 
-    // Get user profiles
     const userIds = [...new Set(games.map(g => g.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
@@ -82,7 +79,16 @@ export default function Leaderboard() {
       (profiles || []).map(p => [p.id, p.display_name || p.email?.split('@')[0] || 'Anonymous'])
     );
 
-    // For speed bonus: group games by daily_target_id and rank by updated_at
+    // Get daily target dates for time calculations
+    const targetIds = [...new Set(games.map(g => g.daily_target_id))];
+    const { data: targets } = await supabase
+      .from('daily_grid_entities')
+      .select('id, ds')
+      .in('id', targetIds);
+    
+    const targetDateMap = new Map((targets || []).map(t => [t.id, t.ds]));
+
+    // Group winning games by daily_target_id and sort by completion time
     const gamesByTarget = new Map<number, typeof games>();
     for (const game of games) {
       if (!game.is_winner) continue;
@@ -90,81 +96,66 @@ export default function Leaderboard() {
       existing.push(game);
       gamesByTarget.set(game.daily_target_id, existing);
     }
-
-    // Sort each target's games by completion time
     for (const [, targetGames] of gamesByTarget) {
       targetGames.sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
     }
 
-    // Calculate points per user
-    const userPoints = new Map<string, {
-      totalPoints: number;
-      gamesPlayed: number;
-      gamesWon: number;
-      totalWinGuesses: number;
-      dates: string[];
-    }>();
+    // Calculate quality scores per user
+    const userScores = new Map<string, { totalScore: number; gamesPlayed: number; gamesWon: number }>();
 
     for (const game of games) {
-      const entry = userPoints.get(game.user_id) || {
-        totalPoints: 0,
-        gamesPlayed: 0,
-        gamesWon: 0,
-        totalWinGuesses: 0,
-        dates: [],
-      };
-
+      const entry = userScores.get(game.user_id) || { totalScore: 0, gamesPlayed: 0, gamesWon: 0 };
       entry.gamesPlayed++;
 
       if (game.is_winner) {
         entry.gamesWon++;
-        entry.totalWinGuesses += game.num_guesses;
 
-        // Calculate guess points
-        let points = calculateGuessPoints(game.num_guesses, true);
-
-        // Calculate speed bonus
+        const targetDate = targetDateMap.get(game.daily_target_id);
         const targetGames = gamesByTarget.get(game.daily_target_id) || [];
         const rank = targetGames.findIndex(g => g.user_id === game.user_id) + 1;
-        const total = targetGames.length;
-        if (total > 0) {
-          const percentile = rank / total;
-          if (percentile <= 0.10) points += 50;
-          else if (percentile <= 0.25) points += 25;
-          else if (percentile <= 0.50) points += 10;
+        const totalSolvers = targetGames.length;
+
+        // Calculate minutes after midnight PST for the target date
+        let solveTimeMinutes = 0;
+        if (targetDate) {
+          const dayStart = new Date(targetDate + 'T08:00:00Z'); // midnight PST = 8am UTC
+          const solveTime = new Date(game.updated_at);
+          solveTimeMinutes = Math.max(0, (solveTime.getTime() - dayStart.getTime()) / 60000);
         }
 
-        entry.totalPoints += points;
+        const score = calculateQualityScore(
+          game.num_guesses,
+          true,
+          solveTimeMinutes,
+          rank,
+          totalSolvers,
+        );
+        entry.totalScore += score;
       }
 
-      entry.dates.push(game.updated_at);
-      userPoints.set(game.user_id, entry);
+      userScores.set(game.user_id, entry);
     }
 
-    // Build leaderboard
     const board: LeaderboardEntry[] = [];
-    for (const [userId, data] of userPoints) {
-      // Calculate current streak (simplified — consecutive wins)
+    for (const [userId, data] of userScores) {
       board.push({
         userId,
         displayName: profileMap.get(userId) || 'Anonymous',
-        totalPoints: data.totalPoints,
+        totalScore: data.totalScore,
         gamesPlayed: data.gamesPlayed,
         gamesWon: data.gamesWon,
-        currentStreak: 0, // Would need daily_target dates to calc properly
-        avgGuesses: data.gamesWon > 0 ? data.totalWinGuesses / data.gamesWon : 0,
+        avgScore: data.gamesWon > 0 ? Math.round(data.totalScore / data.gamesWon) : 0,
       });
     }
 
-    board.sort((a, b) => b.totalPoints - a.totalPoints);
+    board.sort((a, b) => b.totalScore - a.totalScore);
     setSeasonBoard(board);
   };
 
   const loadDailyBoard = async () => {
     if (!grid) return;
 
-    // Get today's target
-    const today = new Date().toISOString().split('T')[0];
+    const today = getPSTDate();
     const { data: target } = await supabase
       .from('daily_grid_entities')
       .select('id')
@@ -177,7 +168,6 @@ export default function Leaderboard() {
       return;
     }
 
-    // Get all completed games for today
     const { data: games, error } = await supabase
       .from('games')
       .select('user_id, is_winner, num_guesses, updated_at')
@@ -199,32 +189,41 @@ export default function Leaderboard() {
       (profiles || []).map(p => [p.id, p.display_name || p.email?.split('@')[0] || 'Anonymous'])
     );
 
+    const dayStart = new Date(today + 'T08:00:00Z'); // midnight PST
     const totalSolvers = games.length;
+
     const board: DailyEntry[] = games.map((game, index) => {
       const rank = index + 1;
-      let points = calculateGuessPoints(game.num_guesses, true);
-      const percentile = rank / totalSolvers;
-      if (percentile <= 0.10) points += 50;
-      else if (percentile <= 0.25) points += 25;
-      else if (percentile <= 0.50) points += 10;
+      const solveTime = new Date(game.updated_at);
+      const solveTimeMinutes = Math.max(0, (solveTime.getTime() - dayStart.getTime()) / 60000);
+
+      const score = calculateQualityScore(
+        game.num_guesses,
+        true,
+        solveTimeMinutes,
+        rank,
+        totalSolvers,
+      );
 
       return {
         userId: game.user_id,
         displayName: profileMap.get(game.user_id) || 'Anonymous',
         numGuesses: game.num_guesses,
-        points,
+        score,
         completedAt: game.updated_at,
         rank,
       };
     });
 
+    // Sort by score descending (not just time)
+    board.sort((a, b) => b.score - a.score);
     setDailyBoard(board);
   };
 
   return (
     <div className="flex-1 p-4 max-w-lg mx-auto w-full">
       <h1 className="text-2xl font-bold text-center mb-6">
-        🏆 Leaderboard
+        🏆 Standings
       </h1>
 
       {/* Tabs */}
@@ -232,9 +231,7 @@ export default function Leaderboard() {
         <button
           onClick={() => setTab('season')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            tab === 'season'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+            tab === 'season' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Season
@@ -242,9 +239,7 @@ export default function Leaderboard() {
         <button
           onClick={() => setTab('today')}
           className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-            tab === 'today'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
+            tab === 'today' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
           }`}
         >
           Today
@@ -256,7 +251,6 @@ export default function Leaderboard() {
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
         </div>
       ) : tab === 'season' ? (
-        /* Season Leaderboard */
         <div className="space-y-2">
           {seasonBoard.length === 0 ? (
             <p className="text-center text-gray-500 py-8">No games played yet. Be the first!</p>
@@ -282,13 +276,12 @@ export default function Leaderboard() {
                         {isCurrentUser && <span className="text-xs ml-1">(you)</span>}
                       </span>
                       <div className="text-xs text-gray-400">
-                        {entry.gamesWon}/{entry.gamesPlayed} won · {entry.avgGuesses.toFixed(1)} avg
+                        {entry.gamesWon}/{entry.gamesPlayed} won · avg {entry.avgScore}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className="font-bold text-lg">{entry.totalPoints}</span>
-                    <span className="text-xs text-gray-400 ml-1">pts</span>
+                    <span className="font-bold text-lg">{entry.totalScore}</span>
                   </div>
                 </div>
               );
@@ -296,7 +289,6 @@ export default function Leaderboard() {
           )}
         </div>
       ) : (
-        /* Daily Leaderboard */
         <div className="space-y-2">
           {dailyBoard.length === 0 ? (
             <p className="text-center text-gray-500 py-8">No one has solved today's puzzle yet. Be the first!</p>
@@ -305,12 +297,9 @@ export default function Leaderboard() {
               <p className="text-xs text-gray-400 text-center mb-3">
                 {dailyBoard.length} solver{dailyBoard.length !== 1 ? 's' : ''} today
               </p>
-              {dailyBoard.map((entry) => {
+              {dailyBoard.map((entry, index) => {
                 const isCurrentUser = user?.id === entry.userId;
-                const medal = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : null;
-                const time = new Date(entry.completedAt).toLocaleTimeString('en-US', { 
-                  hour: 'numeric', minute: '2-digit', hour12: true 
-                });
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null;
                 
                 return (
                   <div
@@ -321,7 +310,7 @@ export default function Leaderboard() {
                   >
                     <div className="flex items-center gap-3">
                       <span className="w-8 text-center font-mono text-sm text-gray-500">
-                        {medal || `#${entry.rank}`}
+                        {medal || `#${index + 1}`}
                       </span>
                       <div>
                         <span className={`font-medium ${isCurrentUser ? 'text-orange-600' : ''}`}>
@@ -329,13 +318,13 @@ export default function Leaderboard() {
                           {isCurrentUser && <span className="text-xs ml-1">(you)</span>}
                         </span>
                         <div className="text-xs text-gray-400">
-                          {entry.numGuesses} guess{entry.numGuesses !== 1 ? 'es' : ''} · {time}
+                          {entry.numGuesses} guess{entry.numGuesses !== 1 ? 'es' : ''}
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-bold text-lg">{entry.points}</span>
-                      <span className="text-xs text-gray-400 ml-1">pts</span>
+                    <div className="text-right flex items-center gap-1">
+                      <span className="font-bold text-lg">{entry.score}</span>
+                      <span className="text-sm">{getQualityLabel(entry.score)}</span>
                     </div>
                   </div>
                 );
@@ -345,17 +334,14 @@ export default function Leaderboard() {
         </div>
       )}
 
-      {/* Scoring explanation */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-        <h3 className="font-bold text-sm mb-2">How scoring works</h3>
-        <ul className="text-xs text-gray-500 space-y-1">
-          <li>🎯 <strong>100 pts</strong> for a correct answer</li>
-          <li>💡 <strong>+20 pts</strong> per unused guess (max +140)</li>
-          <li>⚡ <strong>+50 pts</strong> if you're in the first 10% to solve</li>
-          <li>🏃 <strong>+25 pts</strong> if top 25% · <strong>+10 pts</strong> if top 50%</li>
-          <li>❌ <strong>0 pts</strong> for a loss</li>
-        </ul>
-        <p className="text-xs text-gray-400 mt-2">Max possible: 290 pts/game. Play early, guess smart!</p>
+      {/* Mysterious scoring hint */}
+      <div className="mt-8 p-4 bg-gray-50 rounded-lg text-center">
+        <p className="text-sm text-gray-500">
+          Quality score based on accuracy, speed, and timing.
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Fewer guesses. Faster solves. Higher score.
+        </p>
       </div>
     </div>
   );
