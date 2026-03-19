@@ -68,7 +68,7 @@ function LoginGate() {
 
 export default function Grid() {
   const { permalink } = useParams<{ permalink: string }>();
-  const { grids, loading } = useApp();
+  const { grids, loading, error } = useApp();
   const { user, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const ds = searchParams.get('ds');
@@ -84,7 +84,11 @@ export default function Grid() {
   }
 
   if (!grid) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-lg text-gray-500">{error || 'Grid not found'}</div>
+      </div>
+    );
   }
 
   // Gate historical games behind login

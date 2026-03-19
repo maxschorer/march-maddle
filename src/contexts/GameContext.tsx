@@ -8,7 +8,7 @@ import { useGrid } from './GridContext';
 import { useGridStorage } from '../utils/gridStorage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
 import { getPSTDate } from '../utils/dateUtils';
-import { calculatePreviewScore, getQualityLabel } from '../utils/scoring';
+import { calculateScore } from '../utils/scoring';
 
 interface GameContextType {
   targetEntity: Entity | null;
@@ -167,9 +167,11 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
       true
     );
     
-    const preview = gameWon ? calculatePreviewScore(guesses.length, true) : 0;
-    const pointsLine = gameWon ? `\n${preview}+ ${getQualityLabel(preview)}` : '';
-    const text = `March Maddle 🏀 #${gameNumber}\n${gameWon ? guesses.length : 'X'}/${maxGuesses} ${performanceEmoji}${pointsLine}\n\n${emoji}\n\nPlay at https://marchmaddle.com!`;
+    const sameDayBonus = getPSTDate() === ds;
+    const score = gameWon ? calculateScore(guesses.length, true, sameDayBonus, 1) : 0;
+    const scoreLine = gameWon ? `\nScore: ${score}` : '';
+    const guessLine = `\n${gameWon ? guesses.length : 'X'}/${maxGuesses} ${performanceEmoji}`;
+    const text = `March Maddle 🏀 #${gameNumber}${scoreLine}${guessLine}\n\n${emoji}\n\nPlay at https://marchmaddle.com!`;
     
     navigator.clipboard.writeText(text)
       .then(() => alert('Results copied to clipboard!'))

@@ -6,6 +6,7 @@ import Leaderboard from './pages/Leaderboard';
 import { AppProvider } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginModal from './components/LoginModal';
+import UsernameModal from './components/UsernameModal';
 
 function App() {
   const { isLoginModalOpen, closeLoginModal } = useAuth();
@@ -24,6 +25,7 @@ function App() {
         </div>
       </BrowserRouter>
       <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />
+      <UsernameModal />
     </>
   );
 }

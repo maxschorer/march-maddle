@@ -1,16 +1,27 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
+
+export interface Profile {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+  leaderboard_opt_out: boolean;
+}
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  profile: Profile | null;
   loading: boolean;
   isLoginModalOpen: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   openLoginModal: () => void;
   closeLoginModal: () => void;
+  setProfile: (profile: Profile) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,14 +29,29 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, email, avatar_url, leaderboard_opt_out')
+      .eq('id', userId)
+      .single();
+    if (data) {
+      setProfile(data);
+    }
+  }, []);
 
   useEffect(() => {
     const getSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      }
       setLoading(false);
     };
 
@@ -34,13 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user && isLoginModalOpen) {
+      if (session?.user) {
+        fetchProfile(session.user.id);
         setIsLoginModalOpen(false);
+      } else {
+        setProfile(null);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [isLoginModalOpen]);
+  }, [fetchProfile]);
 
   const signInWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
@@ -52,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setProfile(null);
   };
 
   const openLoginModal = () => setIsLoginModalOpen(true);
@@ -61,12 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       session,
       user,
+      profile,
       loading,
       isLoginModalOpen,
       signInWithGoogle,
       signOut,
       openLoginModal,
       closeLoginModal,
+      setProfile,
     }}>
       {children}
     </AuthContext.Provider>

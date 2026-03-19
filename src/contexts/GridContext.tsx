@@ -25,7 +25,16 @@ export function GridProvider({ children, grid }: GridProviderProps) {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showHowToPlay, setShowHowToPlayRaw] = useState(() => {
+    return !localStorage.getItem('hasVisited');
+  });
+
+  const setShowHowToPlay = (show: boolean) => {
+    setShowHowToPlayRaw(show);
+    if (!show) {
+      localStorage.setItem('hasVisited', '1');
+    }
+  };
 
   const { maxGuesses, attributes } = grid;
 
