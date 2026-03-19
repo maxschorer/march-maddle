@@ -4,7 +4,7 @@
     "tagline": "Guess the March Madness team!",
     "permalink": "march-maddle",
     "category": "ncaa",
-    "maxGuesses": 8,
+    "maxGuesses": 6,
     "attributes": [
       {
         "key": "seed",

@@ -8,7 +8,7 @@
  * Loss = 0.
  */
 
-const MAX_GUESSES = 8;
+const MAX_GUESSES = 6;
 
 // How many hours in a day the puzzle is available
 const HOURS_IN_DAY = 24;
