@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { calculateQualityScore, getQualityLabel } from '../utils/scoring';
+import { calculateScore, getQualityLabel } from '../utils/scoring';
 import { getPSTDate } from '../utils/dateUtils';
 
 interface LeaderboardEntry {
@@ -61,7 +61,7 @@ export default function Leaderboard() {
     if (!grid) return;
 
     const { data: games, error } = await supabase
-      .from('games')
+      .from('public_games')
       .select('user_id, is_winner, num_guesses, daily_target_id, updated_at')
       .eq('grid_id', grid.id)
       .eq('is_complete', true);
@@ -72,68 +72,93 @@ export default function Leaderboard() {
     const userIds = [...new Set(games.map(g => g.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, display_name, email')
+      .select('id, username, leaderboard_opt_out')
       .in('id', userIds);
 
+    // Only include users with a username who haven't opted out
+    const eligibleUsers = new Set(
+      (profiles || []).filter(p => p.username && !p.leaderboard_opt_out).map(p => p.id)
+    );
     const profileMap = new Map(
-      (profiles || []).map(p => [p.id, p.display_name || p.email?.split('@')[0] || 'Anonymous'])
+      (profiles || []).filter(p => p.username).map(p => [p.id, p.username as string])
     );
 
-    // Get daily target dates for time calculations
+    // Get daily target dates for same-day bonus calculation
     const targetIds = [...new Set(games.map(g => g.daily_target_id))];
     const { data: targets } = await supabase
       .from('daily_grid_entities')
       .select('id, ds')
       .in('id', targetIds);
-    
+
     const targetDateMap = new Map((targets || []).map(t => [t.id, t.ds]));
 
-    // Group winning games by daily_target_id and sort by completion time
-    const gamesByTarget = new Map<number, typeof games>();
+    // Group games by eligible users, then sort by target date to calculate streaks
+    const gamesByUser = new Map<string, typeof games>();
     for (const game of games) {
-      if (!game.is_winner) continue;
-      const existing = gamesByTarget.get(game.daily_target_id) || [];
+      if (!eligibleUsers.has(game.user_id)) continue;
+      const existing = gamesByUser.get(game.user_id) || [];
       existing.push(game);
-      gamesByTarget.set(game.daily_target_id, existing);
-    }
-    for (const [, targetGames] of gamesByTarget) {
-      targetGames.sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+      gamesByUser.set(game.user_id, existing);
     }
 
-    // Calculate quality scores per user
+    // Calculate scores per user with streaks
     const userScores = new Map<string, { totalScore: number; gamesPlayed: number; gamesWon: number }>();
 
-    for (const game of games) {
-      const entry = userScores.get(game.user_id) || { totalScore: 0, gamesPlayed: 0, gamesWon: 0 };
-      entry.gamesPlayed++;
+    for (const [userId, userGames] of gamesByUser) {
+      // Sort by target date
+      userGames.sort((a, b) => {
+        const dateA = targetDateMap.get(a.daily_target_id) || '';
+        const dateB = targetDateMap.get(b.daily_target_id) || '';
+        return dateA.localeCompare(dateB);
+      });
 
-      if (game.is_winner) {
-        entry.gamesWon++;
+      const entry = { totalScore: 0, gamesPlayed: 0, gamesWon: 0 };
+      let streak = 0;
+      let lastWinDate: string | null = null;
 
+      for (const game of userGames) {
+        entry.gamesPlayed++;
         const targetDate = targetDateMap.get(game.daily_target_id);
-        const targetGames = gamesByTarget.get(game.daily_target_id) || [];
-        const rank = targetGames.findIndex(g => g.user_id === game.user_id) + 1;
-        const totalSolvers = targetGames.length;
 
-        // Calculate minutes after midnight PST for the target date
-        let solveTimeMinutes = 0;
-        if (targetDate) {
-          const dayStart = new Date(targetDate + 'T08:00:00Z'); // midnight PST = 8am UTC
-          const solveTime = new Date(game.updated_at);
-          solveTimeMinutes = Math.max(0, (solveTime.getTime() - dayStart.getTime()) / 60000);
+        if (game.is_winner) {
+          entry.gamesWon++;
+
+          // Same-day bonus: solved on the puzzle's date
+          let sameDayBonus = false;
+          if (targetDate) {
+            const solveDate = new Date(game.updated_at).toISOString().slice(0, 10);
+            sameDayBonus = solveDate === targetDate;
+          }
+
+          // Streak only counts same-day wins
+          if (sameDayBonus) {
+            if (lastWinDate) {
+              const diff = (new Date(targetDate!).getTime() - new Date(lastWinDate).getTime()) / 86400000;
+              streak = diff === 1 ? streak + 1 : 1;
+            } else {
+              streak = 1;
+            }
+            lastWinDate = targetDate || null;
+          } else {
+            streak = 0;
+            lastWinDate = null;
+          }
+
+          const score = calculateScore(
+            game.num_guesses,
+            true,
+            sameDayBonus,
+            streak,
+          );
+          entry.totalScore += score;
+        } else {
+          // Loss breaks the streak
+          streak = 0;
+          lastWinDate = null;
         }
-
-        const score = calculateQualityScore(
-          game.num_guesses,
-          true,
-          solveTimeMinutes,
-          rank,
-          totalSolvers,
-        );
-        entry.totalScore += score;
       }
 
-      userScores.set(game.user_id, entry);
+      userScores.set(userId, entry);
     }
 
     const board: LeaderboardEntry[] = [];
@@ -169,7 +194,7 @@ export default function Leaderboard() {
     }
 
     const { data: games, error } = await supabase
-      .from('games')
+      .from('public_games')
       .select('user_id, is_winner, num_guesses, updated_at')
       .eq('daily_target_id', target.id)
       .eq('is_complete', true)
@@ -182,27 +207,83 @@ export default function Leaderboard() {
     const userIds = games.map(g => g.user_id);
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, display_name, email')
+      .select('id, username, leaderboard_opt_out')
       .in('id', userIds);
 
+    const eligibleDailyUsers = new Set(
+      (profiles || []).filter(p => p.username && !p.leaderboard_opt_out).map(p => p.id)
+    );
     const profileMap = new Map(
-      (profiles || []).map(p => [p.id, p.display_name || p.email?.split('@')[0] || 'Anonymous'])
+      (profiles || []).filter(p => p.username).map(p => [p.id, p.username as string])
     );
 
-    const dayStart = new Date(today + 'T08:00:00Z'); // midnight PST
-    const totalSolvers = games.length;
+    // Filter to eligible users only
+    const eligibleGames = games.filter(g => eligibleDailyUsers.has(g.user_id));
 
-    const board: DailyEntry[] = games.map((game, index) => {
-      const rank = index + 1;
-      const solveTime = new Date(game.updated_at);
-      const solveTimeMinutes = Math.max(0, (solveTime.getTime() - dayStart.getTime()) / 60000);
+    // For daily board, we show scores with same-day bonus (they all solved today)
+    // but we need streak info per user
+    const userIds2 = eligibleGames.map(g => g.user_id);
 
-      const score = calculateQualityScore(
+    // Fetch all completed winning games for these users to calculate streaks
+    const { data: allUserGames } = await supabase
+      .from('public_games')
+      .select('user_id, is_winner, daily_target_id, updated_at')
+      .eq('grid_id', grid.id)
+      .eq('is_complete', true)
+      .in('user_id', userIds2);
+
+    // Get all target dates for streak calculation
+    const allTargetIds = [...new Set((allUserGames || []).map(g => g.daily_target_id))];
+    const { data: allTargets } = await supabase
+      .from('daily_grid_entities')
+      .select('id, ds')
+      .in('id', allTargetIds);
+    const allTargetDateMap = new Map((allTargets || []).map(t => [t.id, t.ds]));
+
+    // Calculate current streak per user
+    const userStreaks = new Map<string, number>();
+    for (const userId of userIds2) {
+      const ug = (allUserGames || [])
+        .filter(g => g.user_id === userId)
+        .sort((a, b) => {
+          const dateA = allTargetDateMap.get(a.daily_target_id) || '';
+          const dateB = allTargetDateMap.get(b.daily_target_id) || '';
+          return dateA.localeCompare(dateB);
+        });
+
+      let streak = 0;
+      let lastWinDate: string | null = null;
+      for (const g of ug) {
+        const td = allTargetDateMap.get(g.daily_target_id);
+        const solvedSameDay = g.is_winner && td
+          ? new Date(g.updated_at).toISOString().slice(0, 10) === td
+          : false;
+
+        if (g.is_winner && solvedSameDay) {
+          if (td && lastWinDate) {
+            const diff = (new Date(td).getTime() - new Date(lastWinDate).getTime()) / 86400000;
+            streak = diff === 1 ? streak + 1 : 1;
+          } else {
+            streak = 1;
+          }
+          lastWinDate = td || null;
+        } else {
+          streak = 0;
+          lastWinDate = null;
+        }
+      }
+      userStreaks.set(userId, streak);
+    }
+
+    const board: DailyEntry[] = eligibleGames.map((game, index) => {
+      const sameDayBonus = true; // today's board = solved today
+      const streak = userStreaks.get(game.user_id) || 1;
+
+      const score = calculateScore(
         game.num_guesses,
         true,
-        solveTimeMinutes,
-        rank,
-        totalSolvers,
+        sameDayBonus,
+        streak,
       );
 
       return {
@@ -211,7 +292,7 @@ export default function Leaderboard() {
         numGuesses: game.num_guesses,
         score,
         completedAt: game.updated_at,
-        rank,
+        rank: index + 1,
       };
     });
 
@@ -334,14 +415,15 @@ export default function Leaderboard() {
         </div>
       )}
 
-      {/* Mysterious scoring hint */}
-      <div className="mt-8 p-4 bg-gray-50 rounded-lg text-center">
-        <p className="text-sm text-gray-500">
-          Quality score based on accuracy, speed, and timing.
-        </p>
-        <p className="text-xs text-gray-400 mt-1">
-          Fewer guesses. Faster solves. Higher score.
-        </p>
+      {/* Scoring explanation */}
+      <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+        <p className="text-sm font-medium text-gray-700 text-center mb-2">Scoring</p>
+        <div className="text-xs text-gray-500 space-y-1">
+          <p>+100 correct answer</p>
+          <p>+20 per unused guess</p>
+          <p>+50 same-day bonus</p>
+          <p>+10 per streak day</p>
+        </div>
       </div>
     </div>
   );

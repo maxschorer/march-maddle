@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { getSupabaseImageUrl } from '../utils/storage';
 import { formatNumber, formatMoney } from '../utils/gameUtils';
+import { closeHints, CloseFunctionName } from '../utils/closeFunctions';
+import { abbreviateState } from '../utils/stateAbbreviations';
 
 import '../styles/animations.css';
 
@@ -28,7 +30,8 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
       if (!entityAttr.img_path) return '?';
       const imgUrl = getSupabaseImageUrl("attributes", entityAttr.img_path);
       return (
-        <div className="flex items-center justify-center w-full h-full">
+        <div className="flex items-center justify-between w-full h-full">
+          <div className="w-1/4" />
           <div className="w-1/2 flex items-center justify-center">
             <img
               src={imgUrl}
@@ -36,6 +39,7 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
               className="w-full h-auto object-contain"
             />
           </div>
+          <div className="w-1/4" />
         </div>
       );
     }
@@ -79,17 +83,21 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
       );
     }
 
-    default:
+    default: {
+      const displayValue = attr.key === 'state'
+        ? abbreviateState(comparison.guessedValue)
+        : comparison.guessedValue;
       return (
         <div className="flex items-center justify-between w-full h-full">
           <div className="w-1/4" />
           <div className="w-1/2 flex items-center justify-center">
-            <span>{comparison.guessedValue}</span>
+            <span>{displayValue}</span>
           </div>
           <div className="w-1/4 flex items-center justify-start]-">
           </div>
         </div>
       );
+    }
   }
 };
 
@@ -124,26 +132,31 @@ const GuessRow = ({ guess } : { guess: Guess }) => {
         const entityAttr = guess.entity.attributes.find(a => a.key === attr.key);
         if (!comparison || !entityAttr) return;
         
+        const tooltip = comparison.match === 'close' && attr.closeFnName
+          ? closeHints[attr.closeFnName as CloseFunctionName]
+          : undefined;
+
         return (
-          <div 
-            key={attr.key} 
+          <div
+            key={attr.key}
             className="flip-container"
           >
             <div className={`flip-card delay-${ind+1}`}>
               <div className={`${EMPTY_CLASS} flip-back`} />
-              <div 
+              <div
                 className={`
-                  aspect-square 
-                  flex 
-                  items-center 
-                  justify-center 
-                  text-white 
-                  font-bold 
-                  text-base 
+                  aspect-square
+                  flex
+                  items-center
+                  justify-center
+                  text-white
+                  font-bold
+                  text-base
                   md:text-2xl
                   flip-front
                   ${comparison.match}
                 `}
+                title={tooltip}
               >
                 {renderValue(entityAttr, attr, comparison)}
               </div>

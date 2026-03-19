@@ -12,25 +12,26 @@ const HowToPlayModal = ({ isOpen, onClose }: HowToPlayModalProps) => {
     <Modal isOpen={isOpen} title="How to Play" onClose={onClose}>
       <div className="space-y-6 max-h-[80vh] overflow-y-auto p-4 bg-white rounded-lg">
         <div className="space-y-4">
-          <p className="font-medium">Guess today's March Madness team in 8 tries!</p>
-          
+          <p className="font-medium">Guess today's March Madness team in 6 tries!</p>
+
           <p>Each team has five attributes:</p>
           <ul className="list-disc pl-5 space-y-1">
-            <li><strong>Seed</strong> — Tournament seed (1-16)</li>
             <li><strong>Region</strong> — East, West, South, or Midwest</li>
+            <li><strong>Seed</strong> — Tournament seed (1-16)</li>
             <li><strong>Conference</strong> — The team's conference (ACC, SEC, Big Ten, etc.)</li>
             <li><strong>State</strong> — Where the school is located</li>
             <li><strong>KenPom</strong> — KenPom ranking (1 = best)</li>
           </ul>
-          
+
           <p>The color of each tile shows how close your guess is:</p>
-          
+
           <div className="space-y-2">
             <p><span className="inline-block w-4 h-4 bg-green-500 rounded mr-2 align-middle"></span><strong>Green</strong> — Exact match!</p>
             <p><span className="inline-block w-4 h-4 bg-yellow-500 rounded mr-2 align-middle"></span><strong>Yellow</strong> — Close:</p>
             <ul className="list-disc pl-10 text-sm space-y-1">
               <li>Seed within 2 of the target</li>
               <li>Conference in the same tier (e.g., both power conferences)</li>
+              <li>State in the same geographic region</li>
               <li>KenPom ranking within 10</li>
             </ul>
             <p><span className="inline-block w-4 h-4 bg-gray-400 rounded mr-2 align-middle"></span><strong>Gray</strong> — Not close</p>
