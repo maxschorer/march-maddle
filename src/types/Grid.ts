@@ -5,6 +5,7 @@ export type GridState = 'archived' | 'upcoming' | 'live';
 export interface GridAttribute {
   key: string;
   closeFn: ((a: unknown, b: unknown) => boolean) | null;
+  closeFnName: string | null;
   displayName: string;
   displayType: DisplayType;
   hasDirection: boolean;

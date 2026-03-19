@@ -1,7 +1,7 @@
 // Registry of close functions that can be referenced by name in the database
 // Each function takes two values (target, guessed) and returns true if they are "close"
 
-export type CloseFunctionName = 
+export type CloseFunctionName =
   | 'within2'
   | 'sameNbaDivision'
   | 'adjacentNbaPosition'
@@ -9,7 +9,8 @@ export type CloseFunctionName =
   | 'sameCollegeConference'
   | 'sameNFLDivision'
   | 'within10'
-  | 'sameMarchMadnessConference';
+  | 'sameMarchMadnessConference'
+  | 'sameStateRegion';
 
 export type CloseFunction = (target: unknown, guess: unknown) => boolean;
 
@@ -154,6 +155,29 @@ const sameMarchMadnessConference: CloseFunction = (target: unknown, guess: unkno
 };
 
 
+// State region close function - "close" if states are in the same geographic region
+const sameStateRegion: CloseFunction = (target: unknown, guess: unknown) => {
+  const regions = [
+    // Southeast
+    ['Alabama', 'Florida', 'Georgia', 'Kentucky', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee', 'Virginia', 'Washington D.C.'],
+    // Northeast
+    ['Connecticut', 'Maryland', 'New York', 'Pennsylvania'],
+    // Midwest
+    ['Illinois', 'Indiana', 'Iowa', 'Kansas', 'Michigan', 'Missouri', 'Nebraska', 'North Dakota', 'Ohio', 'Wisconsin'],
+    // Southwest
+    ['Arizona', 'Arkansas', 'Texas'],
+    // West
+    ['California', 'Hawaii', 'Idaho', 'Utah', 'Washington'],
+  ];
+
+  for (const region of regions) {
+    if (region.includes(String(target)) && region.includes(String(guess))) {
+      return true;
+    }
+  }
+  return false;
+};
+
 // Registry of all close functions
 export const closeFunctionRegistry: Record<CloseFunctionName, CloseFunction> = {
   within2,
@@ -164,6 +188,7 @@ export const closeFunctionRegistry: Record<CloseFunctionName, CloseFunction> = {
   sameNFLDivision,
   within10,
   sameMarchMadnessConference,
+  sameStateRegion,
 };
 
 // Helper function to get a close function by name
@@ -171,6 +196,14 @@ export function getCloseFunction(name: string | null): CloseFunction | null {
   if (!name) return null;
   return closeFunctionRegistry[name as CloseFunctionName] || null;
 }
+
+// Tooltip hints shown to users when a "close" match is triggered
+export const closeHints: Partial<Record<CloseFunctionName, string>> = {
+  sameMarchMadnessConference: 'Same conference tier',
+  sameStateRegion: 'Same region',
+  within2: 'Within 2',
+  within10: 'Within 10',
+};
 
 // Helper function to get all available close function names with descriptions
 export function getCloseFunctionOptions(): Array<{ value: CloseFunctionName; description: string }> {
@@ -183,5 +216,6 @@ export function getCloseFunctionOptions(): Array<{ value: CloseFunctionName; des
     { value: 'sameNFLDivision', description: 'NFL teams in the same division' },
     { value: 'within10', description: 'Values within 10' },
     { value: 'sameMarchMadnessConference', description: 'NCAA conferences in the same tier (power/mid-major/low-major)' },
+    { value: 'sameStateRegion', description: 'States in the same geographic region' },
   ];
 }
