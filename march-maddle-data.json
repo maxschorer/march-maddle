@@ -7,14 +7,6 @@
     "maxGuesses": 6,
     "attributes": [
       {
-        "key": "seed",
-        "displayName": "Seed",
-        "displayType": "number",
-        "hasDirection": true,
-        "closeFn": null,
-        "closeFnName": "within2"
-      },
-      {
         "key": "region",
         "displayName": "Region",
         "displayType": "text",
@@ -23,9 +15,17 @@
         "closeFnName": null
       },
       {
+        "key": "seed",
+        "displayName": "Seed",
+        "displayType": "number",
+        "hasDirection": true,
+        "closeFn": null,
+        "closeFnName": "within2"
+      },
+      {
         "key": "conference",
         "displayName": "Conference",
-        "displayType": "text",
+        "displayType": "photo",
         "hasDirection": false,
         "closeFn": null,
         "closeFnName": "sameMarchMadnessConference"
@@ -36,7 +36,7 @@
         "displayType": "text",
         "hasDirection": false,
         "closeFn": null,
-        "closeFnName": null
+        "closeFnName": "sameStateRegion"
       },
       {
         "key": "kenpom",
