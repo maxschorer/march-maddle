@@ -32,7 +32,7 @@ export default async function RootLayout({
   const profile = user ? await getProfile(user.id) : null;
 
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased" style={{ colorScheme: 'light' }}>
       <body className="min-h-full flex flex-col">
         <AppShell initialUser={user} initialProfile={profile}>
           {children}

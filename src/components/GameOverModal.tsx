@@ -97,8 +97,8 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
   if (!targetEntity) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white rounded-lg max-w-md w-full">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-y-auto" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} onClick={handleClose}>
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto my-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
           <div className="relative mb-4">
             <div className="text-center">

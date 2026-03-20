@@ -21,16 +21,16 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white rounded-lg max-w-sm w-full">
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} onClick={onClose}>
+      <div className="bg-white rounded-lg max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
-          <div className="relative mb-4">
-            <h2 className="text-xl font-bold text-center">
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-xl font-bold">
               Sign in to <span className="text-orange-500">March</span> Maddle 🏀
             </h2>
             <button
               onClick={onClose}
-              className="absolute top-0 right-0 text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0"
               aria-label="Close"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
