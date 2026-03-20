@@ -22,11 +22,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white py-3 px-4 shadow-md border-b-2 border-orange-500">
+      <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white py-2 px-3 md:py-3 md:px-4 shadow-md border-b-2 border-orange-500">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-5">
-            <Link to="/" className="text-2xl font-bold">
-              <span className="text-orange-500">March</span> Maddle <span className="text-lg">🏀</span>
+          <div className="flex items-center gap-3 md:gap-5">
+            <Link to="/" className="text-lg md:text-2xl font-bold whitespace-nowrap">
+              <span className="text-orange-500">March</span> Maddle <span className="text-sm md:text-lg">🏀</span>
             </Link>
             {user ? (
               <Link
@@ -63,7 +63,7 @@ export default function Header() {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <button
               onClick={() => setShowHowToPlay(true)}
               className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
@@ -95,7 +95,7 @@ export default function Header() {
             ) : (
               <button
                 onClick={openLoginModal}
-                className="text-base bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+                className="text-sm md:text-base bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 md:px-3 md:py-1.5 rounded-lg transition-colors whitespace-nowrap"
               >
                 Sign In
               </button>
