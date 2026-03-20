@@ -53,7 +53,7 @@ export default function Header() {
                 className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
               >
                 <Calendar size={18} />
-                <span className="hidden md:inline">Season</span>
+                <span className="hidden md:inline">Schedule</span>
               </Link>
             ) : (
               <button
@@ -61,7 +61,7 @@ export default function Header() {
                 className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
               >
                 <Calendar size={18} />
-                <span className="hidden md:inline">Season</span>
+                <span className="hidden md:inline">Schedule</span>
               </button>
             )}
           </div>
