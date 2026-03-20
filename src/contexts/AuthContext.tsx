@@ -33,14 +33,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, username, display_name, email, avatar_url, leaderboard_opt_out')
-      .eq('id', userId)
-      .single();
-    if (data) {
-      setProfile(data);
+  const fetchProfile = useCallback(async (userId: string, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, email, avatar_url, leaderboard_opt_out')
+        .eq('id', userId)
+        .single();
+      if (data) {
+        setProfile(data);
+        return;
+      }
+      // Profile may not exist yet (DB trigger race), wait and retry
+      if (i < retries - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
     }
   }, []);
 
