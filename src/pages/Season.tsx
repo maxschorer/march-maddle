@@ -8,10 +8,10 @@ import { getPSTDate } from '../utils/dateUtils';
 interface SeasonStats {
   gamesPlayed: number;
   gamesWon: number;
+  totalScore: number;
   currentStreak: number;
   bestStreak: number;
   averageGuesses: number;
-  totalGuesses: number;
 }
 
 interface DayResult {
@@ -20,6 +20,7 @@ interface DayResult {
   teamName: string;
   won: boolean;
   numGuesses: number;
+  score: number;
   complete: boolean;
 }
 
@@ -43,7 +44,7 @@ export default function Season() {
         // Get all games for this user and grid
         const { data: games, error } = await supabase
           .from('games')
-          .select('daily_target_id, is_winner, is_complete, num_guesses, target_entity, created_at')
+          .select('daily_target_id, is_winner, is_complete, num_guesses, score, streak, target_entity, created_at')
           .eq('user_id', user.id)
           .eq('grid_id', grid.id)
           .eq('is_complete', true)
@@ -76,6 +77,7 @@ export default function Season() {
                 teamName: game.target_entity?.name || 'Unknown',
                 won: game.is_winner,
                 numGuesses: game.num_guesses,
+                score: game.score || 0,
                 complete: true,
               });
               
@@ -94,6 +96,7 @@ export default function Season() {
                   teamName: '',
                   won: false,
                   numGuesses: 0,
+                  score: 0,
                   complete: false,
                 });
                 tempStreak = 0;
@@ -107,14 +110,15 @@ export default function Season() {
         const completedGames = games || [];
         const wins = completedGames.filter(g => g.is_winner);
         const totalGuesses = wins.reduce((sum, g) => sum + (g.num_guesses || 0), 0);
+        const totalScore = completedGames.reduce((sum, g) => sum + (g.score || 0), 0);
 
         setStats({
           gamesPlayed: completedGames.length,
           gamesWon: wins.length,
+          totalScore,
           currentStreak,
           bestStreak,
           averageGuesses: wins.length > 0 ? totalGuesses / wins.length : 0,
-          totalGuesses,
         });
 
         setDayResults(results);
@@ -152,26 +156,34 @@ export default function Season() {
         Your <span className="text-orange-500">March Maddle</span> Season
       </h1>
 
+      {/* Total Score */}
+      {stats && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-5 text-center mb-4">
+          <div className="text-4xl font-bold text-orange-500">{stats.totalScore}</div>
+          <div className="text-sm text-gray-500 uppercase tracking-wide">Total Score</div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold">{stats.gamesPlayed}</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Played</div>
+        <div className="grid grid-cols-4 gap-2 mb-8">
+          <div className="bg-gray-100 rounded-lg p-3 text-center">
+            <div className="text-xl font-bold">{stats.gamesPlayed}</div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-wide">Played</div>
           </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold">
+          <div className="bg-gray-100 rounded-lg p-3 text-center">
+            <div className="text-xl font-bold">
               {stats.gamesPlayed > 0 ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : 0}%
             </div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Win Rate</div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-wide">Win Rate</div>
           </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold">{stats.currentStreak}</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Current Streak 🔥</div>
+          <div className="bg-gray-100 rounded-lg p-3 text-center">
+            <div className="text-xl font-bold">{stats.currentStreak}</div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-wide">Streak</div>
           </div>
-          <div className="bg-gray-100 rounded-lg p-4 text-center">
-            <div className="text-3xl font-bold">{stats.averageGuesses.toFixed(1)}</div>
-            <div className="text-xs text-gray-500 uppercase tracking-wide">Avg Guesses</div>
+          <div className="bg-gray-100 rounded-lg p-3 text-center">
+            <div className="text-xl font-bold">{stats.averageGuesses.toFixed(1)}</div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-wide">Avg Guesses</div>
           </div>
         </div>
       )}
@@ -214,8 +226,11 @@ export default function Season() {
                 {day.complete ? (
                   <>
                     <span className="text-sm text-gray-500">{day.teamName}</span>
-                    <span className="text-lg">{day.won ? '🟩' : '🟥'}</span>
-                    {day.won && <span className="text-xs text-gray-400">{day.numGuesses} guesses</span>}
+                    {day.won ? (
+                      <span className="text-xs font-medium text-green-600">{day.score} pts</span>
+                    ) : (
+                      <span className="text-lg">🟥</span>
+                    )}
                   </>
                 ) : isPast ? (
                   <span className="text-sm text-orange-500 font-medium">Play →</span>

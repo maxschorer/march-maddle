@@ -111,7 +111,7 @@ export default function Leaderboard() {
     }
 
     board.sort((a, b) => b.totalScore - a.totalScore);
-    setSeasonBoard(board);
+    setSeasonBoard(board.slice(0, 100));
   };
 
   const loadDailyBoard = async () => {

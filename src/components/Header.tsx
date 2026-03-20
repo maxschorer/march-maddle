@@ -28,21 +28,39 @@ export default function Header() {
             <Link to="/" className="text-2xl font-bold">
               <span className="text-orange-500">March</span> Maddle <span className="text-lg">🏀</span>
             </Link>
-            <Link
-              to="/leaderboard"
-              className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
-            >
-              <Trophy size={18} />
-              <span className="hidden md:inline">Standings</span>
-            </Link>
-            {user && (
+            {user ? (
+              <Link
+                to="/leaderboard"
+                className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
+              >
+                <Trophy size={18} />
+                <span className="hidden md:inline">Standings</span>
+              </Link>
+            ) : (
+              <button
+                onClick={openLoginModal}
+                className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
+              >
+                <Trophy size={18} />
+                <span className="hidden md:inline">Standings</span>
+              </button>
+            )}
+            {user ? (
               <Link
                 to="/season"
                 className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
               >
                 <Calendar size={18} />
-                <span className="hidden md:inline">My Season</span>
+                <span className="hidden md:inline">Season</span>
               </Link>
+            ) : (
+              <button
+                onClick={openLoginModal}
+                className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
+              >
+                <Calendar size={18} />
+                <span className="hidden md:inline">Season</span>
+              </button>
             )}
           </div>
           <div className="flex items-center gap-4">

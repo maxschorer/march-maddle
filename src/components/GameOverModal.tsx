@@ -59,8 +59,8 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
   }, [showGameOver, gameWon, gameId]);
 
   useEffect(() => {
-    if (playMusic && grid.audio_file) {
-      audioRef.current = new Audio(`/sounds/${grid.audio_file}`);
+    if (playMusic) {
+      audioRef.current = new Audio(`/sounds/one-shining-moment.mp3`);
       audioRef.current.play();
     }
 
