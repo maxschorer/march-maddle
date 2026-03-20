@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Entity } from '@/types/Entity';
 import { Grid } from '@/types/Grid';
 import { Guess } from '@/types/Guess';
+import { GameState } from '@/types/Game';
 import { getTarget } from '@/data/entities';
 import { compareAttributes } from '@/utils/gameUtils';
 import { useGrid } from './GridContext';
@@ -94,16 +95,15 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
         if (user) {
           savedState = await gridStorage.getGame(target.id);
           if (!savedState) {
-            // Try migrating from localStorage
-            savedState = await migrateLocalGame(target.id, grid.id, target.entity);
+            savedState = await migrateLocalGame(target.id, grid.id);
           }
           if (!savedState) {
-            savedState = await gridStorage.initGame(grid.id, target.entity, target.id);
+            savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id);
           }
         } else {
           savedState = await gridStorage.getGame(target.id);
           if (!savedState) {
-            savedState = await gridStorage.initGame(grid.id, target.entity, target.id);
+            savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id);
           }
         }
 
@@ -137,25 +137,38 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
     setGuesses(updatedGuesses);
     setCurrentGuess(newGuess);
 
-    // Submit to storage (DB trigger handles completion for logged-in users)
+    // Submit to storage
     try {
-      const result = await gridStorage.submitGuess(gameId, entity.entity_id);
-      if (result.gameWon) {
-        setGameWon(true);
-        setGameOver(true);
-        setTimeout(() => {
-          setShowGameOver(true);
-          setPlayMusic(true);
-        }, 3400);
-      } else if (result.gameOver) {
-        setGameWon(false);
-        setGameOver(true);
-        setTimeout(() => {
-          setShowGameOver(true);
-        }, 3400);
-      }
+      await gridStorage.submitGuess(gameId, entity.entity_id);
     } catch (error) {
       console.error('Failed to submit guess:', error);
+    }
+
+    // Determine win/loss (works for both local and DB-backed games)
+    const isWin = entity.entity_id === targetEntity.entity_id;
+    const isMaxGuesses = updatedGuesses.length >= maxGuesses;
+
+    if (isWin || isMaxGuesses) {
+      const won = isWin;
+      setGameWon(won);
+      setGameOver(true);
+
+      // Persist final state for localStorage (no-op for Supabase, trigger handles it)
+      if (!user) {
+        const data = localStorage.getItem('marchMaddleGameStates');
+        const games: GameState[] = data ? JSON.parse(data) : [];
+        const game = games.find((g) => g.id === gameId);
+        if (game) {
+          game.gameWon = won;
+          game.gameOver = true;
+          localStorage.setItem('marchMaddleGameStates', JSON.stringify(games));
+        }
+      }
+
+      setTimeout(() => {
+        setShowGameOver(true);
+        if (won) setPlayMusic(true);
+      }, 3400);
     }
   };
 
