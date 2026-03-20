@@ -44,7 +44,7 @@ export async function getDailyTarget(ds: string, gridId: number): Promise<DailyT
   const supabase = createClient();
   try {
     const { data, error } = await supabase
-      .from('daily_targets')
+      .from('daily_grid_entities')
       .select('id, grid_id, entity_id, number, ds')
       .eq('ds', ds)
       .eq('grid_id', gridId)
