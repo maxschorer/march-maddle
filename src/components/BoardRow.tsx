@@ -84,8 +84,11 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
     }
 
     default: {
+      const regionAbbrev: Record<string, string> = { 'East': 'E', 'West': 'W', 'South': 'S', 'Midwest': 'MW' };
       const displayValue = attr.key === 'state'
         ? abbreviateState(comparison.guessedValue)
+        : attr.key === 'region'
+        ? regionAbbrev[comparison.guessedValue] || comparison.guessedValue
         : comparison.guessedValue;
       return (
         <div className="flex items-center justify-between w-full h-full">

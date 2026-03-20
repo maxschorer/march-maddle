@@ -25,16 +25,24 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
     guesses,
   } = useGame();
   const { grid } = useGrid();
-  const { user, openLoginModal } = useAuth();
+  const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [dbScore, setDbScore] = useState<{ score: number; streak: number } | null>(null);
 
-  // Fetch DB-computed score and streak when modal shows
+  // Compute or fetch score when modal shows
   useEffect(() => {
-    if (!showGameOver || !gameWon || !gameId) {
+    if (!showGameOver || !gameWon) {
       setDbScore(null);
+      return;
+    }
+
+    if (!user || !gameId) {
+      // Logged out: compute client-side assuming same-day and streak of 1
+      const unusedGuesses = grid.maxGuesses - guesses.length;
+      const score = 100 + (20 * unusedGuesses) + 50 + 10; // base + guess bonus + same-day + streak(1)
+      setDbScore({ score, streak: 1 });
       return;
     }
 
@@ -56,11 +64,11 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
     };
 
     loadScore();
-  }, [showGameOver, gameWon, gameId]);
+  }, [showGameOver, gameWon, gameId, user, grid.maxGuesses, guesses.length]);
 
   useEffect(() => {
-    if (playMusic) {
-      audioRef.current = new Audio(`/sounds/one-shining-moment.mp3`);
+    if (playMusic && gameWon) {
+      audioRef.current = new Audio('/sounds/one-shining-moment.mp3');
       audioRef.current.play();
     }
 
@@ -70,7 +78,7 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
         audioRef.current = null;
       }
     };
-  }, [playMusic, grid.audio_file]);
+  }, [playMusic, gameWon]);
 
   const handleClose = () => {
     if (audioRef.current) {
@@ -204,28 +212,29 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
               >
                 Share 🏀
               </button>
-              <button
-                onClick={() => { handleClose(); navigate('/leaderboard'); }}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
-              >
-                🏆 Standings
-              </button>
+              {user ? (
+                <button
+                  onClick={() => { handleClose(); navigate('/leaderboard'); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
+                >
+                  🏆 Standings
+                </button>
+              ) : (
+                <button
+                  onClick={signInWithGoogle}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
+                >
+                  Save Score
+                </button>
+              )}
             </div>
-            
-            {user ? (
+
+            {user && (
               <button
                 onClick={() => { handleClose(); navigate('/season'); }}
                 className="w-full text-center text-orange-500 hover:text-orange-600 text-sm font-medium py-2 transition-colors"
               >
                 View Season Stats →
-              </button>
-            ) : (
-              <button
-                onClick={openLoginModal}
-                className="w-full text-center text-sm py-2 transition-colors"
-              >
-                <span className="text-gray-500">Sign in to track your score on the leaderboard </span>
-                <span className="text-orange-500 font-medium hover:text-orange-600">→</span>
               </button>
             )}
             
