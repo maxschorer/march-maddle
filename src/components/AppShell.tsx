@@ -61,11 +61,16 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
         provider: 'google',
         options: { redirectTo },
       });
-      console.log('[auth] signInWithOAuth result:', { data, error });
+      console.log('[auth] signInWithOAuth data.provider:', data?.provider);
+      console.log('[auth] signInWithOAuth data.url:', data?.url);
+      console.log('[auth] signInWithOAuth error:', error);
+      console.log('[auth] signInWithOAuth full data:', JSON.stringify(data));
       if (error) throw error;
-      // Manually redirect if the browser client didn't do it
       if (data?.url) {
+        console.log('[auth] redirecting to:', data.url);
         window.location.href = data.url;
+      } else {
+        console.error('[auth] NO URL returned from signInWithOAuth');
       }
     } catch (err) {
       console.error('[auth] signInWithGoogle error:', err);
