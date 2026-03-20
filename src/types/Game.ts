@@ -1,11 +1,7 @@
-import { Entity } from "./Entity";
-import { Guess } from "./Guess";
-
 export interface GameState {
-    guesses: Guess[];
+    guessedEntityIds: number[];
     gameWon: boolean;
     gameOver: boolean;
     id: number;
-    targetEntity: Entity;
     gridId: number;
 }

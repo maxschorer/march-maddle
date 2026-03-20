@@ -4,10 +4,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Entity } from '@/types/Entity';
 import { Grid } from '@/types/Grid';
 import { Guess } from '@/types/Guess';
+import { GameState } from '@/types/Game';
 import { getTarget } from '@/data/entities';
 import { compareAttributes } from '@/utils/gameUtils';
 import { useGrid } from './GridContext';
-import { useGridStorage } from '@/utils/gridStorage';
+import { useGridStorage, migrateLocalGame } from '@/utils/gridStorage';
+import { useAuth } from '@/components/AppShell';
 import { getPerformanceEmoji } from '@/utils/emojiUtils';
 import { createClient } from '@/lib/supabase/client';
 
@@ -37,6 +39,18 @@ interface GameProviderProps {
   ds: string;
 }
 
+// Convert guessedEntityIds to full Guess objects with comparisons
+function buildGuesses(guessedEntityIds: number[], gridEntities: Entity[], targetEntity: Entity, grid: Grid): Guess[] {
+  return guessedEntityIds.map(entityId => {
+    const entity = gridEntities.find(e => e.entity_id === entityId);
+    if (!entity) return null;
+    return {
+      entity,
+      comparison: compareAttributes(entity, targetEntity, grid.attributes),
+    };
+  }).filter((g): g is Guess => g !== null);
+}
+
 export function GameProvider({ children, gridEntities, grid, ds }: GameProviderProps) {
   const [targetEntity, setTargetEntity] = useState<Entity | null>(null);
   const [guesses, setGuesses] = useState<Guess[]>([]);
@@ -44,12 +58,13 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
   const [gameOver, setGameOver] = useState(false);
   const [gameWon, setGameWon] = useState(false);
   const [showGameOver, setShowGameOver] = useState(false);
-  const [gameNumber, setGameNumber] = useState<number|null>(0);
-  const [gameId, setGameId] = useState<number|null>(null);
+  const [gameNumber, setGameNumber] = useState<number | null>(0);
+  const [gameId, setGameId] = useState<number | null>(null);
   const [playMusic, setPlayMusic] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { maxGuesses } = useGrid();
   const gridStorage = useGridStorage();
+  const { user } = useAuth();
 
   // Reset game state when date changes
   useEffect(() => {
@@ -67,33 +82,41 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
       try {
         setIsLoading(true);
 
-        if (gridEntities.length === 0) {
-          return;
-        }
+        if (gridEntities.length === 0) return;
 
         const target = await getTarget(gridEntities, grid.id, ds);
-        if (!target || !target.entity) {
-          return;
-        }
+        if (!target || !target.entity) return;
+
         setTargetEntity(target.entity);
         setGameNumber(target.number);
 
-        let savedState = await gridStorage.getGame(target.id);
-        if (!savedState) {
-          savedState = await gridStorage.initGame(grid.id, target.entity, target.id);
+        // If user just signed in, try migrating localStorage game
+        let savedState = null;
+        if (user) {
+          savedState = await gridStorage.getGame(target.id);
+          if (!savedState) {
+            savedState = await migrateLocalGame(target.id, grid.id);
+          }
+          if (!savedState) {
+            savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id);
+          }
+        } else {
+          savedState = await gridStorage.getGame(target.id);
+          if (!savedState) {
+            savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id);
+          }
         }
+
         setGameId(savedState.id);
-        if (savedState) {
-          setGuesses(savedState.guesses);
-          setGameOver(savedState.gameOver);
-          setGameWon(savedState.gameWon);
-          setCurrentGuess(
-            savedState.guesses && savedState.guesses.length > 0
-              ? savedState.guesses[savedState.guesses.length - 1]
-              : null
-          );
-          setShowGameOver(savedState.gameOver);
-        }
+
+        // Build full Guess objects from entity IDs
+        const entityIds = savedState.guessedEntityIds || [];
+        const fullGuesses = buildGuesses(entityIds, gridEntities, target.entity, grid);
+        setGuesses(fullGuesses);
+        setGameOver(savedState.gameOver);
+        setGameWon(savedState.gameWon);
+        setCurrentGuess(fullGuesses.length > 0 ? fullGuesses[fullGuesses.length - 1] : null);
+        setShowGameOver(savedState.gameOver);
       } catch (error) {
         console.error('Failed to initialize game:', error);
       } finally {
@@ -102,51 +125,49 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
     };
     initializeGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gridEntities.length, grid.id, ds]);
+  }, [gridEntities.length, grid.id, ds, user?.id]);
 
-  useEffect(() => {
-    const updateGameState = async () => {
-      if (!gameId || !grid.id || guesses.length === 0 || !targetEntity) return;
-      await gridStorage.updateGame({
-        guesses,
-        gameOver,
-        gameWon,
-        id: gameId,
-        targetEntity,
-        gridId: grid.id
-      });
-    };
-    updateGameState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, guesses, gameOver, gameWon, grid.id]);
+  const handleGuess = async (entity: Entity) => {
+    if (gameOver || !targetEntity || !gameId) return;
 
-  const handleGuess = (entity: Entity) => {
-    if (gameOver || !targetEntity) {
-      return;
-    }
+    // Compute comparison for UI
     const comparison = compareAttributes(entity, targetEntity, grid.attributes);
-
-    const newGuess: Guess = {
-      entity,
-      comparison
-    };
-
+    const newGuess: Guess = { entity, comparison };
     const updatedGuesses = [...guesses, newGuess];
     setGuesses(updatedGuesses);
     setCurrentGuess(newGuess);
 
-    if (entity.entity_id === targetEntity.entity_id) {
-      setGameWon(true);
+    // Submit to storage
+    try {
+      await gridStorage.submitGuess(gameId, entity.entity_id);
+    } catch (error) {
+      console.error('Failed to submit guess:', error);
+    }
+
+    // Determine win/loss (works for both local and DB-backed games)
+    const isWin = entity.entity_id === targetEntity.entity_id;
+    const isMaxGuesses = updatedGuesses.length >= maxGuesses;
+
+    if (isWin || isMaxGuesses) {
+      const won = isWin;
+      setGameWon(won);
       setGameOver(true);
+
+      // Persist final state for localStorage (no-op for Supabase, trigger handles it)
+      if (!user) {
+        const data = localStorage.getItem('marchMaddleGameStates');
+        const games: GameState[] = data ? JSON.parse(data) : [];
+        const game = games.find((g) => g.id === gameId);
+        if (game) {
+          game.gameWon = won;
+          game.gameOver = true;
+          localStorage.setItem('marchMaddleGameStates', JSON.stringify(games));
+        }
+      }
+
       setTimeout(() => {
         setShowGameOver(true);
-        setPlayMusic(true);
-      }, 3400);
-    } else if (updatedGuesses.length >= maxGuesses) {
-      setGameWon(false);
-      setGameOver(true);
-      setTimeout(() => {
-        setShowGameOver(true);
+        if (won) setPlayMusic(true);
       }, 3400);
     }
   };
@@ -170,7 +191,6 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
       true
     );
 
-    // Fetch DB-computed score
     let score = 0;
     if (gameWon && gameId) {
       try {

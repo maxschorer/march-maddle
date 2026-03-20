@@ -1,12 +1,11 @@
 import { GameState } from '@/types/Game';
-import { Entity } from '@/types/Entity';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/AppShell';
 
 export interface GridStorageAPI {
-  initGame: (gridId: number, targetEntity: Entity, dailyTargetId: number | null) => Promise<GameState>;
+  initGame: (gridId: number, dailyTargetId: number, targetEntityId: number) => Promise<GameState>;
   getGame: (dailyTargetId: number) => Promise<GameState | null>;
-  updateGame: (gameState: GameState) => Promise<void>;
+  submitGuess: (gameId: number, entityId: number) => Promise<{ gameOver: boolean; gameWon: boolean }>;
 }
 
 const STORAGE_KEY = 'marchMaddleGameStates';
@@ -15,33 +14,24 @@ export const localGridStorage: GridStorageAPI = {
   async getGame(dailyTargetId: number): Promise<GameState | null> {
     const data = localStorage.getItem(STORAGE_KEY);
     const games: GameState[] = data ? JSON.parse(data) : [];
-    const gameState = games.find((g) => g.id === dailyTargetId);
-    return gameState || null;
+    return games.find((g) => g.id === dailyTargetId) || null;
   },
-  async updateGame(gameState: GameState): Promise<void> {
+  async submitGuess(gameId: number, entityId: number): Promise<{ gameOver: boolean; gameWon: boolean }> {
     const data = localStorage.getItem(STORAGE_KEY);
     const games: GameState[] = data ? JSON.parse(data) : [];
-    let found = false;
-    for (let i = 0; i < games.length; i++) {
-      if (games[i].id === gameState.id) {
-        games[i] = gameState;
-        found = true;
-        break;
-      }
-    }
-    if (!found) {
-      games.push(gameState);
-    }
+    const game = games.find((g) => g.id === gameId);
+    if (!game) throw new Error('Game not found');
+    game.guessedEntityIds.push(entityId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
-    return;
+    return { gameOver: game.gameOver, gameWon: game.gameWon };
   },
-  async initGame(gridId: number, targetEntity: Entity, dailyTargetId: number | null): Promise<GameState> {
+  async initGame(gridId: number, dailyTargetId: number): Promise<GameState> {
     const data = localStorage.getItem(STORAGE_KEY);
     const games: GameState[] = data ? JSON.parse(data) : [];
     const id = dailyTargetId ?? gridId;
     let gameState = games.find((g) => g.id === id);
     if (gameState) return gameState;
-    gameState = { guesses: [], id, gameWon: false, gameOver: false, gridId, targetEntity };
+    gameState = { guessedEntityIds: [], id, gameWon: false, gameOver: false, gridId };
     games.push(gameState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
     return gameState;
@@ -51,67 +41,109 @@ export const localGridStorage: GridStorageAPI = {
 export const supabaseGridStorage: GridStorageAPI = {
   async getGame(dailyTargetId: number): Promise<GameState | null> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id;
-    if (!userId) throw new Error('User not authenticated');
-    const { data, error } = await supabase
+    const { data: game, error } = await supabase
       .from('games')
-      .select('id, guesses, target_entity, is_winner, is_complete, daily_target_id, grid_id')
-      .eq('user_id', userId)
+      .select('id, is_winner, is_complete, daily_target_id, grid_id')
       .eq('daily_target_id', dailyTargetId)
       .single();
     if (error && error.code !== 'PGRST116') throw error;
-    if (!data) return null;
+    if (!game) return null;
+
+    const { data: guesses } = await supabase
+      .from('guesses')
+      .select('entity_id')
+      .eq('game_id', game.id)
+      .order('guess_number', { ascending: true });
+
     return {
-      id: data.id,
-      guesses: data.guesses,
-      gameWon: data.is_winner,
-      gameOver: data.is_complete,
-      targetEntity: data.target_entity,
-      gridId: data.grid_id,
+      id: game.id,
+      guessedEntityIds: (guesses || []).map((g: { entity_id: number }) => g.entity_id),
+      gameWon: game.is_winner,
+      gameOver: game.is_complete,
+      gridId: game.grid_id,
     };
   },
-  async updateGame(gameState: GameState): Promise<void> {
+  async submitGuess(gameId: number, entityId: number): Promise<{ gameOver: boolean; gameWon: boolean }> {
     const supabase = createClient();
-    const { guesses, gameWon, gameOver, id } = gameState;
     const { error } = await supabase
-      .from('games')
-      .update({
-        guesses,
-        is_winner: gameWon,
-        is_complete: gameOver,
-        num_guesses: guesses.length,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id);
+      .from('guesses')
+      .insert({ game_id: gameId, entity_id: entityId });
     if (error) throw error;
+
+    const { data: game } = await supabase
+      .from('games')
+      .select('is_winner, is_complete')
+      .eq('id', gameId)
+      .single();
+
+    return {
+      gameOver: game?.is_complete ?? false,
+      gameWon: game?.is_winner ?? false,
+    };
   },
-  async initGame(gridId: number, targetEntity: Entity, dailyTargetId: number | null): Promise<GameState> {
+  async initGame(gridId: number, dailyTargetId: number): Promise<GameState> {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id;
-    if (!userId) throw new Error('User not authenticated');
     const { data, error } = await supabase
       .from('games')
-      .insert([{
-        user_id: userId,
+      .insert({
+        user_id: (await supabase.auth.getUser()).data.user?.id,
         daily_target_id: dailyTargetId,
         grid_id: gridId,
-        target_entity: targetEntity,
-      }])
+      })
       .select()
       .single();
     if (error) throw error;
     return {
       id: data.id,
-      guesses: data.guesses || [],
-      gameWon: data.is_winner || false,
-      gameOver: data.is_complete || false,
-      targetEntity: data.target_entity,
+      guessedEntityIds: [],
+      gameWon: false,
+      gameOver: false,
       gridId: data.grid_id,
     };
   }
 };
+
+export async function migrateLocalGame(dailyTargetId: number, gridId: number): Promise<GameState | null> {
+  const data = localStorage.getItem(STORAGE_KEY);
+  const games: GameState[] = data ? JSON.parse(data) : [];
+  const localGame = games.find((g) => g.id === dailyTargetId);
+  if (!localGame || localGame.guessedEntityIds.length === 0) return null;
+
+  const supabase = createClient();
+  const { data: newGame, error } = await supabase
+    .from('games')
+    .insert({
+      user_id: (await supabase.auth.getUser()).data.user?.id,
+      daily_target_id: dailyTargetId,
+      grid_id: gridId,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+
+  for (const entityId of localGame.guessedEntityIds) {
+    await supabase
+      .from('guesses')
+      .insert({ game_id: newGame.id, entity_id: entityId });
+  }
+
+  const { data: finalGame } = await supabase
+    .from('games')
+    .select('is_winner, is_complete')
+    .eq('id', newGame.id)
+    .single();
+
+  const updatedGames = games.filter((g) => g.id !== dailyTargetId);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGames));
+
+  return {
+    id: newGame.id,
+    guessedEntityIds: localGame.guessedEntityIds,
+    gameWon: finalGame?.is_winner ?? false,
+    gameOver: finalGame?.is_complete ?? false,
+    gridId,
+  };
+}
 
 export function useGridStorage(): GridStorageAPI {
   const { user } = useAuth();
