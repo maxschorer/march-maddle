@@ -51,15 +51,21 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const signInWithGoogle = useCallback(async () => {
-    const supabase = createClient();
-    const redirectPath = `${window.location.pathname}${window.location.search}`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`,
-      },
-    });
-    if (error) throw error;
+    try {
+      const supabase = createClient();
+      const redirectPath = `${window.location.pathname}${window.location.search}`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
+      console.log('[auth] signInWithOAuth redirectTo:', redirectTo);
+      console.log('[auth] supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      console.log('[auth] signInWithOAuth result:', { data, error });
+      if (error) throw error;
+    } catch (err) {
+      console.error('[auth] signInWithGoogle error:', err);
+    }
   }, []);
 
   const signOut = useCallback(async () => {
