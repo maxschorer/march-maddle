@@ -1,11 +1,41 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  // Pass through — no auth calls in the proxy.
-  // Auth is handled by:
-  //   - /auth/callback route (exchanges PKCE code, sets cookies)
-  //   - Browser client (reads session from cookies via createBrowserClient)
-  // Making network calls here (getUser, getClaims, getSession) blocks every
-  // page load when Supabase is slow or unreachable.
-  return NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // Do not run code between createServerClient and
+  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
+
+  // IMPORTANT: If you remove getClaims() and you use server-side rendering
+  // with the Supabase client, your users may be randomly logged out.
+  await supabase.auth.getClaims()
+
+  // No redirect to login — app handles its own logged-out state inline.
+
+  return supabaseResponse
 }
