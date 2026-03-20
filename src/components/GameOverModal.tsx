@@ -5,10 +5,8 @@ import { useGrid } from '../contexts/GridContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getSupabaseImageUrl } from '../utils/storage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
-import { calculateScore } from '../utils/scoring';
 import { abbreviateState } from '../utils/stateAbbreviations';
 import { supabase } from '../lib/supabase';
-import { getPSTDate } from '../utils/dateUtils';
 
 interface GameOverModalProps {
   switchToDate: (date: string) => void;
@@ -23,74 +21,42 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
     targetEntity,
     shareResults,
     gameNumber,
+    gameId,
     guesses,
-    ds,
   } = useGame();
   const { grid } = useGrid();
   const { user, openLoginModal } = useAuth();
   const navigate = useNavigate();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [streak, setStreak] = useState(1);
+  const [dbScore, setDbScore] = useState<{ score: number; streak: number } | null>(null);
 
-  // Calculate streak when game is won
+  // Fetch DB-computed score and streak when modal shows
   useEffect(() => {
-    if (!showGameOver || !gameWon || !user) {
-      setStreak(1);
+    if (!showGameOver || !gameWon || !gameId) {
+      setDbScore(null);
       return;
     }
 
-    const loadStreak = async () => {
-      const { data: games } = await supabase
-        .from('games')
-        .select('daily_target_id, is_winner, updated_at')
-        .eq('user_id', user.id)
-        .eq('grid_id', grid.id)
-        .eq('is_complete', true);
+    const loadScore = async () => {
+      try {
+        const { data } = await supabase
+          .from('games')
+          .select('score, streak')
+          .eq('id', gameId)
+          .single();
 
-      if (!games) { setStreak(1); return; }
-
-      const targetIds = [...new Set(games.map(g => g.daily_target_id))];
-      const { data: targets } = await supabase
-        .from('daily_grid_entities')
-        .select('id, ds')
-        .in('id', targetIds);
-
-      const targetDateMap = new Map((targets || []).map(t => [t.id, t.ds]));
-
-      // Sort by target date
-      const sorted = games
-        .map(g => ({
-          ...g,
-          ds: targetDateMap.get(g.daily_target_id) || '',
-          solvedSameDay: g.is_winner && targetDateMap.get(g.daily_target_id)
-            ? new Date(g.updated_at).toISOString().slice(0, 10) === targetDateMap.get(g.daily_target_id)
-            : false,
-        }))
-        .sort((a, b) => a.ds.localeCompare(b.ds));
-
-      let s = 0;
-      let lastWinDate: string | null = null;
-      for (const g of sorted) {
-        // Only same-day wins count toward streak
-        if (g.is_winner && g.solvedSameDay) {
-          if (lastWinDate) {
-            const diff = (new Date(g.ds).getTime() - new Date(lastWinDate).getTime()) / 86400000;
-            s = diff === 1 ? s + 1 : 1;
-          } else {
-            s = 1;
-          }
-          lastWinDate = g.ds;
-        } else {
-          s = 0;
-          lastWinDate = null;
+        if (data) {
+          setDbScore({ score: data.score || 0, streak: data.streak || 0 });
         }
+      } catch {
+        // score/streak columns may not exist yet — gracefully degrade
+        setDbScore(null);
       }
-      setStreak(s);
     };
 
-    loadStreak();
-  }, [showGameOver, gameWon, user, grid.id]);
+    loadScore();
+  }, [showGameOver, gameWon, gameId]);
 
   useEffect(() => {
     if (playMusic && grid.audio_file) {
@@ -191,12 +157,12 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
             </div>
             
             {/* Score breakdown */}
-            {gameWon && (() => {
+            {gameWon && dbScore && (() => {
               const unusedGuesses = grid.maxGuesses - guesses.length;
               const guessBonus = 20 * unusedGuesses;
-              const sameDayBonus = getPSTDate() === ds;
-              const streakBonus = 10 * streak;
-              const total = calculateScore(guesses.length, true, sameDayBonus, streak);
+              const streakBonus = 10 * dbScore.streak;
+              // Derive same-day from total: score = 100 + guessBonus + sameDayBonus + streakBonus
+              const sameDayBonus = dbScore.score - 100 - guessBonus - streakBonus === 50;
               return (
                 <div className="py-3 px-4 bg-gray-50 rounded-lg">
                   <div className="space-y-1 text-sm">
@@ -218,13 +184,13 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                     )}
                     {streakBonus > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-500">{streak}-day streak</span>
+                        <span className="text-gray-500">{dbScore.streak}-day streak</span>
                         <span className="font-medium">+{streakBonus}</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold text-orange-500">{total}</span>
+                      <span className="font-bold text-orange-500">{dbScore.score}</span>
                     </div>
                   </div>
                 </div>

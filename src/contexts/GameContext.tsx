@@ -7,8 +7,7 @@ import { compareAttributes } from '../utils/gameUtils';
 import { useGrid } from './GridContext';
 import { useGridStorage } from '../utils/gridStorage';
 import { getPerformanceEmoji } from '../utils/emojiUtils';
-import { getPSTDate } from '../utils/dateUtils';
-import { calculateScore } from '../utils/scoring';
+import { supabase } from '../lib/supabase';
 
 interface GameContextType {
   targetEntity: Entity | null;
@@ -18,6 +17,7 @@ interface GameContextType {
   gameWon: boolean;
   showGameOver: boolean;
   gameNumber: number | null;
+  gameId: number | null;
   ds: string;
   isLoading: boolean;
   setShowGameOver: (show: boolean) => void;
@@ -149,7 +149,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
     }
   };
 
-  const shareResults = () => {
+  const shareResults = async () => {
     const emoji = guesses.map(guess => {
       return guess.comparison.map(result => {
         switch (result.match) {
@@ -159,20 +159,33 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
         }
       }).join('');
     }).join('\n');
-    
+
     const performanceEmoji = getPerformanceEmoji(
-      gameWon ? guesses.length : null, 
-      maxGuesses, 
-      gameWon, 
+      gameWon ? guesses.length : null,
+      maxGuesses,
+      gameWon,
       true
     );
-    
-    const sameDayBonus = getPSTDate() === ds;
-    const score = gameWon ? calculateScore(guesses.length, true, sameDayBonus, 1) : 0;
+
+    // Fetch DB-computed score
+    let score = 0;
+    if (gameWon && gameId) {
+      try {
+        const { data } = await supabase
+          .from('games')
+          .select('score')
+          .eq('id', gameId)
+          .single();
+        score = data?.score || 0;
+      } catch {
+        // score column may not exist yet
+      }
+    }
+
     const scoreLine = gameWon ? `\nScore: ${score}` : '';
     const guessLine = `\n${gameWon ? guesses.length : 'X'}/${maxGuesses} ${performanceEmoji}`;
     const text = `March Maddle 🏀 #${gameNumber}${scoreLine}${guessLine}\n\n${emoji}\n\nPlay at https://marchmaddle.com!`;
-    
+
     navigator.clipboard.writeText(text)
       .then(() => alert('Results copied to clipboard!'))
       .catch(console.error);
@@ -187,6 +200,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
       gameWon,
       showGameOver,
       gameNumber,
+      gameId,
       ds,
       isLoading,
       playMusic,
