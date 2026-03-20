@@ -27,3 +27,4 @@ out/
 todo.txt
 .gstack/
 next-env.d.ts
+tsconfig.tsbuildinfo

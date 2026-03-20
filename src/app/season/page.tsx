@@ -87,16 +87,16 @@ export default function Season() {
                 tempStreak = 0;
               }
             } else {
+              results.push({
+                date: target.ds,
+                dayNumber: target.number,
+                teamName: '',
+                won: false,
+                numGuesses: 0,
+                score: 0,
+                complete: false,
+              });
               if (target.ds <= getPSTDate()) {
-                results.push({
-                  date: target.ds,
-                  dayNumber: target.number,
-                  teamName: '',
-                  won: false,
-                  numGuesses: 0,
-                  score: 0,
-                  complete: false,
-                });
                 tempStreak = 0;
               }
             }

@@ -151,6 +151,7 @@ const GuessRow = ({ guess }: { guess: Guess }) => {
                 className={`
                   aspect-square
                   flex
+                  flex-col
                   items-center
                   justify-center
                   text-white
@@ -163,6 +164,11 @@ const GuessRow = ({ guess }: { guess: Guess }) => {
                 title={tooltip}
               >
                 {renderValue(entityAttr, attr, comparison)}
+                {tooltip && (
+                  <span className="text-[8px] md:text-[10px] font-normal opacity-80 leading-none mt-[-2px]">
+                    {tooltip}
+                  </span>
+                )}
               </div>
             </div>
           </div>

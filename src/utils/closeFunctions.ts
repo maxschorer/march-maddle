@@ -155,11 +155,16 @@ export function getCloseFunction(name: string | null): CloseFunction | null {
   return closeFunctionRegistry[name as CloseFunctionName] || null;
 }
 
-export const closeHints: Partial<Record<CloseFunctionName, string>> = {
-  sameMarchMadnessConference: 'Same conference tier',
-  sameStateRegion: 'Same region',
+export const closeHints: Record<CloseFunctionName, string> = {
   within2: 'Within 2',
   within10: 'Within 10',
+  sameNbaDivision: 'Same NBA division',
+  adjacentNbaPosition: 'Adjacent position',
+  similarNbaPosition: 'Same position group',
+  sameCollegeConference: 'Same conference',
+  sameNFLDivision: 'Same NFL division',
+  sameMarchMadnessConference: 'Same conference tier',
+  sameStateRegion: 'Same region',
 };
 
 export function getCloseFunctionOptions(): Array<{ value: CloseFunctionName; description: string }> {
