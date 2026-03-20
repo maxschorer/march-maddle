@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AppShell from "@/components/AppShell";
+import { getUser, getProfile } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "March Maddle",
@@ -22,15 +23,20 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getUser();
+  const profile = user ? await getProfile(user.id) : null;
+
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <AppShell>{children}</AppShell>
+        <AppShell initialUser={user} initialProfile={profile}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

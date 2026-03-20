@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/AppShell';
 import { useApp } from '@/contexts/AppContext';
 import { createClient } from '@/lib/supabase/client';
 import { getPSTDate } from '@/utils/dateUtils';

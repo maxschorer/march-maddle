@@ -1,7 +1,7 @@
 import { GameState } from '@/types/Game';
 import { Entity } from '@/types/Entity';
 import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/AppShell';
 
 export interface GridStorageAPI {
   initGame: (gridId: number, targetEntity: Entity, dailyTargetId: number | null) => Promise<GameState>;

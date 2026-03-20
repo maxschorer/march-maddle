@@ -15,7 +15,9 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          )
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -27,15 +29,15 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  // Refresh auth token with a timeout so it never blocks page load
-  try {
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 3000)
-    )
-    await Promise.race([supabase.auth.getUser(), timeout])
-  } catch {
-    // Token refresh failed or timed out — page still loads,
-    // browser client will handle auth independently
+  // Do not run code between createServerClient and
+  // supabase.auth.getClaims(). A simple mistake could make it very hard to debug
+  // issues with users being randomly logged out.
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims
+
+  // No redirect to login — app handles its own logged-out state
+  if (!user) {
+    // Not logged in — that's fine
   }
 
   return supabaseResponse

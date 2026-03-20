@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { Calendar, HelpCircle, Trophy, User } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/AppShell';
 import HowToPlayModal from './HowToPlayModal';
 
 export default function Header() {

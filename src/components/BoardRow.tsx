@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { getSupabaseImageUrl } from '@/utils/storage';
 import { formatNumber, formatMoney } from '@/utils/gameUtils';
-import { closeHints, CloseFunctionName } from '@/utils/closeFunctions';
+import { closeHints, CloseFunctionName, marchMadnessConferenceGroups, stateRegionGroups } from '@/utils/closeFunctions';
 import { abbreviateState } from '@/utils/stateAbbreviations';
 
 import '@/styles/animations.css';
@@ -136,9 +136,20 @@ const GuessRow = ({ guess }: { guess: Guess }) => {
         const entityAttr = guess.entity.attributes.find(a => a.key === attr.key);
         if (!comparison || !entityAttr) return null;
 
-        const tooltip = comparison.match === 'close' && attr.closeFnName
-          ? closeHints[attr.closeFnName as CloseFunctionName]
-          : undefined;
+        let tooltip: string | undefined;
+        if (comparison.match === 'close' && attr.closeFnName) {
+          if (attr.closeFnName === 'sameMarchMadnessConference') {
+            const guessedConf = String(comparison.guessedValue);
+            const tier = marchMadnessConferenceGroups.find(g => g.includes(guessedConf));
+            tooltip = tier ? `Same tier: ${tier.join(', ')}` : closeHints[attr.closeFnName as CloseFunctionName];
+          } else if (attr.closeFnName === 'sameStateRegion') {
+            const guessedState = String(comparison.guessedValue);
+            const region = stateRegionGroups.find(g => g.includes(guessedState));
+            tooltip = region ? `Same region: ${region.join(', ')}` : closeHints[attr.closeFnName as CloseFunctionName];
+          } else {
+            tooltip = closeHints[attr.closeFnName as CloseFunctionName];
+          }
+        }
 
         return (
           <div
@@ -151,7 +162,6 @@ const GuessRow = ({ guess }: { guess: Guess }) => {
                 className={`
                   aspect-square
                   flex
-                  flex-col
                   items-center
                   justify-center
                   text-white
@@ -164,11 +174,6 @@ const GuessRow = ({ guess }: { guess: Guess }) => {
                 title={tooltip}
               >
                 {renderValue(entityAttr, attr, comparison)}
-                {tooltip && (
-                  <span className="text-[8px] md:text-[10px] font-normal opacity-80 leading-none mt-[-2px]">
-                    {tooltip}
-                  </span>
-                )}
               </div>
             </div>
           </div>

@@ -105,13 +105,15 @@ const within10: CloseFunction = (target: unknown, guess: unknown) => {
   return Math.abs(Number(target) - Number(guess)) <= 10;
 };
 
+export const marchMadnessConferenceGroups = [
+  ['SEC', 'Big Ten', 'ACC', 'Big 12', 'Big East'],
+  ['WCC', 'Mountain West', 'Atlantic 10', 'Missouri Valley', 'American', 'MAC'],
+  ['Big South', 'Southland', 'CAA', 'Sun Belt', 'Big West', 'C-USA', 'Horizon', 'Summit', 'WAC', 'Ivy'],
+  ['MAAC', 'NEC', 'MEAC', 'America East', 'Patriot', 'SWAC', 'Big Sky', 'Southern', 'ASUN', 'Ohio Valley']
+];
+
 const sameMarchMadnessConference: CloseFunction = (target: unknown, guess: unknown) => {
-  const conferenceGroups = [
-    ['SEC', 'Big Ten', 'ACC', 'Big 12', 'Big East'],
-    ['WCC', 'Mountain West', 'Atlantic 10', 'Missouri Valley', 'American', 'MAC'],
-    ['Big South', 'Southland', 'CAA', 'Sun Belt', 'Big West', 'C-USA', 'Horizon', 'Summit', 'WAC', 'Ivy'],
-    ['MAAC', 'NEC', 'MEAC', 'America East', 'Patriot', 'SWAC', 'Big Sky', 'Southern', 'ASUN', 'Ohio Valley']
-  ];
+  const conferenceGroups = marchMadnessConferenceGroups;
 
   for (const group of conferenceGroups) {
     if (group.includes(String(target)) && group.includes(String(guess))) {
@@ -121,14 +123,16 @@ const sameMarchMadnessConference: CloseFunction = (target: unknown, guess: unkno
   return false;
 };
 
+export const stateRegionGroups = [
+  ['Alabama', 'Florida', 'Georgia', 'Kentucky', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee', 'Virginia', 'Washington D.C.'],
+  ['Connecticut', 'Maryland', 'New York', 'Pennsylvania'],
+  ['Illinois', 'Indiana', 'Iowa', 'Kansas', 'Michigan', 'Missouri', 'Nebraska', 'North Dakota', 'Ohio', 'Wisconsin'],
+  ['Arizona', 'Arkansas', 'Texas'],
+  ['California', 'Hawaii', 'Idaho', 'Utah', 'Washington'],
+];
+
 const sameStateRegion: CloseFunction = (target: unknown, guess: unknown) => {
-  const regions = [
-    ['Alabama', 'Florida', 'Georgia', 'Kentucky', 'Louisiana', 'Mississippi', 'North Carolina', 'South Carolina', 'Tennessee', 'Virginia', 'Washington D.C.'],
-    ['Connecticut', 'Maryland', 'New York', 'Pennsylvania'],
-    ['Illinois', 'Indiana', 'Iowa', 'Kansas', 'Michigan', 'Missouri', 'Nebraska', 'North Dakota', 'Ohio', 'Wisconsin'],
-    ['Arizona', 'Arkansas', 'Texas'],
-    ['California', 'Hawaii', 'Idaho', 'Utah', 'Washington'],
-  ];
+  const regions = stateRegionGroups;
 
   for (const region of regions) {
     if (region.includes(String(target)) && region.includes(String(guess))) {

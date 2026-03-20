@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/AppShell';
 import { createClient } from '@/lib/supabase/client';
 
 interface LeaderboardEntry {

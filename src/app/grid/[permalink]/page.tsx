@@ -4,7 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { GridProvider, useGrid } from '@/contexts/GridContext';
 import { GameProvider, useGame } from '@/contexts/GameContext';
 import { useApp } from '@/contexts/AppContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/components/AppShell';
 import GameBoard from '@/components/GameBoard';
 import GameOverModal from '@/components/GameOverModal';
 import GameHeader from '@/components/GameHeader';
