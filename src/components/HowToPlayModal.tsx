@@ -53,7 +53,7 @@ const HowToPlayModal = ({ isOpen, onClose }: HowToPlayModalProps) => {
         </div>
 
         <div>
-          <h2 className="text-lg font-bold mb-3">Season Tracking</h2>
+          <h2 className="text-lg font-bold mb-3">Tournament Tracking</h2>
           <p className="text-sm text-gray-700">
             Sign in with Google to play past games you missed, track your win streak, and see your season stats.
             A new team drops every day from March 17 through April 6.

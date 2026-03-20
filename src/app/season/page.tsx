@@ -6,6 +6,7 @@ import { useAuth } from '@/components/AppShell';
 import { useApp } from '@/contexts/AppContext';
 import { createClient } from '@/lib/supabase/client';
 import { getPSTDate } from '@/utils/dateUtils';
+import { getAllEntities } from '@/data/entities';
 
 interface SeasonStats {
   gamesPlayed: number;
@@ -46,7 +47,7 @@ export default function Season() {
 
         const { data: games, error } = await supabase
           .from('games')
-          .select('daily_target_id, is_winner, is_complete, num_guesses, score, streak, target_entity, created_at')
+          .select('daily_target_id, is_winner, is_complete, num_guesses, score, streak, created_at')
           .eq('user_id', user.id)
           .eq('grid_id', grid.id)
           .eq('is_complete', true)
@@ -62,6 +63,10 @@ export default function Season() {
 
         if (targetsError) throw targetsError;
 
+        // Load entities to look up team names
+        const entities = await getAllEntities(grid.id);
+        const entityMap = new Map(entities.map(e => [e.entity_id, e.name]));
+
         const results: DayResult[] = [];
         let bestStreak = 0;
         let tempStreak = 0;
@@ -73,7 +78,7 @@ export default function Season() {
               results.push({
                 date: target.ds,
                 dayNumber: target.number,
-                teamName: game.target_entity?.name || 'Unknown',
+                teamName: entityMap.get(target.entity_id) || 'Unknown',
                 won: game.is_winner,
                 numGuesses: game.num_guesses,
                 score: game.score || 0,
@@ -151,7 +156,7 @@ export default function Season() {
   return (
     <div className="flex-1 p-4 max-w-lg mx-auto w-full">
       <h1 className="text-2xl font-bold text-center mb-6">
-        Your <span className="text-orange-500">March Maddle</span> Season
+        Your <span className="text-orange-500">March Maddle</span> Tournament
       </h1>
 
       {stats && (
