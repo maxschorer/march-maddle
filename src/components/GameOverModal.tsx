@@ -228,7 +228,7 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                   onClick={() => { handleClose(); router.push('/season'); }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
                 >
-                  📅 Tournament
+                  📅 Season
                 </button>
               </div>
             ) : (

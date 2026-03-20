@@ -156,7 +156,7 @@ export default function Season() {
   return (
     <div className="flex-1 p-4 max-w-lg mx-auto w-full">
       <h1 className="text-2xl font-bold text-center mb-6">
-        Your <span className="text-orange-500">March Maddle</span> Tournament
+        Your <span className="text-orange-500">March Maddle</span> Season
       </h1>
 
       {stats && (
@@ -189,7 +189,7 @@ export default function Season() {
         </div>
       )}
 
-      <h2 className="text-lg font-bold mb-3">Tournament Games</h2>
+      <h2 className="text-lg font-bold mb-3">Season Games</h2>
       <div className="space-y-2">
         {dayResults.map((day) => {
           const isPast = day.date <= today;

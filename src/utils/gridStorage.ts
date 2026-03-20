@@ -45,8 +45,8 @@ export const supabaseGridStorage: GridStorageAPI = {
       .from('games')
       .select('id, is_winner, is_complete, daily_target_id, grid_id')
       .eq('daily_target_id', dailyTargetId)
-      .single();
-    if (error && error.code !== 'PGRST116') throw error;
+      .maybeSingle();
+    if (error) throw error;
     if (!game) return null;
 
     const { data: guesses } = await supabase
