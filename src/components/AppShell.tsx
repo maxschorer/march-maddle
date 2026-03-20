@@ -63,6 +63,10 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
       });
       console.log('[auth] signInWithOAuth result:', { data, error });
       if (error) throw error;
+      // Manually redirect if the browser client didn't do it
+      if (data?.url) {
+        window.location.href = data.url;
+      }
     } catch (err) {
       console.error('[auth] signInWithGoogle error:', err);
     }
