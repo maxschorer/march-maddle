@@ -1,13 +1,15 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Entity } from '../types/Entity';
-import { Grid } from '../types/Grid';
-import { Guess } from '../types/Guess';
-import { getTarget } from '../data/entities';
-import { compareAttributes } from '../utils/gameUtils';
+import { Entity } from '@/types/Entity';
+import { Grid } from '@/types/Grid';
+import { Guess } from '@/types/Guess';
+import { getTarget } from '@/data/entities';
+import { compareAttributes } from '@/utils/gameUtils';
 import { useGrid } from './GridContext';
-import { useGridStorage } from '../utils/gridStorage';
-import { getPerformanceEmoji } from '../utils/emojiUtils';
-import { supabase } from '../lib/supabase';
+import { useGridStorage } from '@/utils/gridStorage';
+import { getPerformanceEmoji } from '@/utils/emojiUtils';
+import { createClient } from '@/lib/supabase/client';
 
 interface GameContextType {
   targetEntity: Entity | null;
@@ -64,7 +66,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
     const initializeGame = async () => {
       try {
         setIsLoading(true);
-        
+
         if (gridEntities.length === 0) {
           return;
         }
@@ -123,16 +125,16 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
       return;
     }
     const comparison = compareAttributes(entity, targetEntity, grid.attributes);
-    
+
     const newGuess: Guess = {
       entity,
       comparison
     };
-    
+
     const updatedGuesses = [...guesses, newGuess];
     setGuesses(updatedGuesses);
     setCurrentGuess(newGuess);
-    
+
     if (entity.entity_id === targetEntity.entity_id) {
       setGameWon(true);
       setGameOver(true);
@@ -150,6 +152,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
   };
 
   const shareResults = async () => {
+    const supabase = createClient();
     const emoji = guesses.map(guess => {
       return guess.comparison.map(result => {
         switch (result.match) {
@@ -213,7 +216,6 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useGame() {
   const context = useContext(GameContext);
   if (context === undefined) {

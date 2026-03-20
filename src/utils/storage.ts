@@ -1,12 +1,13 @@
-import { supabase } from '../lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { getPSTDate } from './dateUtils';
 
 export function getSupabaseImageUrl(bucket: string, path: string): string {
+  const supabase = createClient();
   const { data: { publicUrl } } = supabase
     .storage
     .from(bucket)
     .getPublicUrl(path);
-  
+
   return publicUrl;
 }
 
@@ -47,27 +48,25 @@ export function setDailyVisitData(data: DailyVisitData): void {
 export function shouldShowDailyLoginPrompt(): boolean {
   const today = getPSTDate();
   const visitData = getDailyVisitData();
-  
-  // If it's a new day, reset the tracking
+
   if (visitData.lastVisitDate !== today) {
     setDailyVisitData({
       lastVisitDate: today,
       loginPromptShown: false
     });
-    return true; // First visit of the day
+    return true;
   }
-  
-  // Same day - only show if we haven't shown it yet
+
   return !visitData.loginPromptShown;
 }
 
 export function markLoginPromptShown(): void {
   const today = getPSTDate();
   const visitData = getDailyVisitData();
-  
+
   setDailyVisitData({
     ...visitData,
     lastVisitDate: today,
     loginPromptShown: true
   });
-} 
+}

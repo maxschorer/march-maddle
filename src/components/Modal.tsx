@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 
@@ -8,32 +10,30 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
-const Modal  = ({ isOpen, onClose, title="", children }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title = "", children }: ModalProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  
-  // Handle ESC key to close modal
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
         onClose();
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
-    
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
-  
-  // Prevent body scrolling when modal is open
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
     }
-    
+
     return () => {
       document.body.style.overflow = '';
     };
@@ -43,13 +43,13 @@ const Modal  = ({ isOpen, onClose, title="", children }: ModalProps) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div 
+      <div
         className="fixed inset-0 bg-black/70 transition-opacity"
         onClick={onClose}
       />
-      
+
       <div className="flex min-h-full items-center justify-center p-4">
-        <div 
+        <div
           ref={modalRef}
           className="bg-white rounded-lg max-w-lg w-full p-6 shadow-xl transform transition-all"
           onClick={(e) => e.stopPropagation()}
@@ -63,7 +63,7 @@ const Modal  = ({ isOpen, onClose, title="", children }: ModalProps) => {
               <X size={20} />
             </button>
           </div>
-          
+
           <div className="mt-2">
             {children}
           </div>

@@ -5,7 +5,7 @@ export function getPSTDate(): string {
     month: '2-digit',
     day: '2-digit'
   }).split('/');
-  
+
   return `${pstDate[2]}-${pstDate[0]}-${pstDate[1]}`; // Convert MM/DD/YYYY to YYYY-MM-DD
 }
 

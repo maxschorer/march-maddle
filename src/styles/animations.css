@@ -42,32 +42,32 @@
 }
 
 /* Staggered delay classes */
-.delay-0 { 
-  animation-delay: 0s; 
+.delay-0 {
+  animation-delay: 0s;
 }
 
-.delay-1 { 
-  animation-delay: 0.4s; 
+.delay-1 {
+  animation-delay: 0.4s;
 }
 
-.delay-2 { 
-  animation-delay: 0.8s; 
+.delay-2 {
+  animation-delay: 0.8s;
 }
 
-.delay-3 { 
-  animation-delay: 1.2s; 
+.delay-3 {
+  animation-delay: 1.2s;
 }
 
-.delay-4 { 
-  animation-delay: 1.6s; 
+.delay-4 {
+  animation-delay: 1.6s;
 }
 
-.delay-5 { 
-  animation-delay: 2s; 
+.delay-5 {
+  animation-delay: 2s;
 }
 
-.delay-6 { 
-  animation-delay: 2.4s; 
+.delay-6 {
+  animation-delay: 2.4s;
 }
 
 .incorrect {

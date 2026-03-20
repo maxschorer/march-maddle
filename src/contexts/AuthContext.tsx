@@ -1,5 +1,7 @@
+'use client';
+
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
 
 export interface Profile {
@@ -33,6 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
+  const supabase = createClient();
+
   const fetchProfile = useCallback(async (userId: string, retries = 3) => {
     for (let i = 0; i < retries; i++) {
       const { data } = await supabase
@@ -49,24 +53,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await new Promise(r => setTimeout(r, 500));
       }
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
-    // Handle the OAuth callback hash fragment on page load
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    if (hashParams.get('access_token')) {
-      // Clean the URL hash after Supabase processes it
-      window.history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        }
+      } catch (err) {
+        console.error('Failed to get session:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     getSession();
@@ -83,13 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, [supabase, fetchProfile]);
 
   const signInWithGoogle = async () => {
+    // Store the current path so we can redirect back after auth
+    const redirectPath = `${window.location.pathname}${window.location.search}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`,
       },
     });
     if (error) throw error;
@@ -122,7 +126,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

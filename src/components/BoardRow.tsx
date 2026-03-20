@@ -1,30 +1,31 @@
+'use client';
+
 import SearchRow from './SearchRow';
-import { useGrid } from '../contexts/GridContext';
-import { Guess, AttributeComparison } from '../types/Guess';
-import { GridAttribute } from '../types/Grid';
-import { EntityAttribute } from '../types/Entity';
-import { 
+import { useGrid } from '@/contexts/GridContext';
+import { Guess, AttributeComparison } from '@/types/Guess';
+import { GridAttribute } from '@/types/Grid';
+import { EntityAttribute } from '@/types/Entity';
+import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
-import { getSupabaseImageUrl } from '../utils/storage';
-import { formatNumber, formatMoney } from '../utils/gameUtils';
-import { closeHints, CloseFunctionName } from '../utils/closeFunctions';
-import { abbreviateState } from '../utils/stateAbbreviations';
+import { getSupabaseImageUrl } from '@/utils/storage';
+import { formatNumber, formatMoney } from '@/utils/gameUtils';
+import { closeHints, CloseFunctionName } from '@/utils/closeFunctions';
+import { abbreviateState } from '@/utils/stateAbbreviations';
 
-import '../styles/animations.css';
+import '@/styles/animations.css';
 
 interface GuessRowProps {
   guess: Guess | null;
   isCurrentGuess: boolean;
 }
 
-const EMPTY_CLASS = "aspect-square bg-gray-200"
+const EMPTY_CLASS = "aspect-square bg-gray-200";
 
-
-const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, comparison: AttributeComparison, ) => {
+const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, comparison: AttributeComparison) => {
   if (!comparison) return '?';
-  
+
   switch (attr.displayType) {
     case 'photo': {
       if (!entityAttr.img_path) return '?';
@@ -52,7 +53,7 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
           <div className="w-1/2 flex items-center justify-center">
             <span className={isLong ? 'text-xs md:text-sm' : ''}>{formattedValue}</span>
           </div>
-          <div className="w-1/4 flex items-center justify-start]-">
+          <div className="w-1/4 flex items-center justify-start">
             {comparison.direction && (
               <span>
                 {comparison.direction === 'higher' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
@@ -72,7 +73,7 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
           <div className="w-1/2 flex items-center justify-center">
             <span className={isLong ? 'text-xs md:text-sm' : ''}>{formattedValue}</span>
           </div>
-          <div className="w-1/4 flex items-center justify-start]-">
+          <div className="w-1/4 flex items-center justify-start">
             {comparison.direction && (
               <span>
                 {comparison.direction === 'higher' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
@@ -86,9 +87,9 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
     default: {
       const regionAbbrev: Record<string, string> = { 'East': 'E', 'West': 'W', 'South': 'S', 'Midwest': 'MW' };
       const displayValue = attr.key === 'state'
-        ? abbreviateState(comparison.guessedValue)
+        ? abbreviateState(comparison.guessedValue as string)
         : attr.key === 'region'
-        ? regionAbbrev[comparison.guessedValue] || comparison.guessedValue
+        ? regionAbbrev[comparison.guessedValue as string] || comparison.guessedValue
         : comparison.guessedValue;
       return (
         <div className="flex items-center justify-between w-full h-full">
@@ -96,7 +97,7 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
           <div className="w-1/2 flex items-center justify-center">
             <span>{displayValue}</span>
           </div>
-          <div className="w-1/4 flex items-center justify-start]-">
+          <div className="w-1/4 flex items-center justify-start">
           </div>
         </div>
       );
@@ -105,25 +106,25 @@ const renderValue = (entityAttr: EntityAttribute, attr: GridAttribute, compariso
 };
 
 const EmptyRow = () => {
-return (
+  return (
     <div className="grid grid-cols-6 gap-1">
-    {[...Array(6)].map((_, i) => (
-        <div 
-        key={i} 
-        className={EMPTY_CLASS}
+      {[...Array(6)].map((_, i) => (
+        <div
+          key={i}
+          className={EMPTY_CLASS}
         />
-    ))}
+      ))}
     </div>
-);
+  );
 };
 
-const GuessRow = ({ guess } : { guess: Guess }) => {
+const GuessRow = ({ guess }: { guess: Guess }) => {
   const { grid } = useGrid();
   return (
     <div className="grid grid-cols-6 gap-1">
       {/* Player image */}
       <div className="aspect-square">
-        <img 
+        <img
           src={getSupabaseImageUrl("entities", guess.entity.imgPath)}
           alt={guess.entity.name}
           className="w-full h-full object-cover object-[center_top]"
@@ -133,8 +134,8 @@ const GuessRow = ({ guess } : { guess: Guess }) => {
       {grid.attributes.map((attr, ind) => {
         const comparison = guess.comparison.find(c => c.attribute === attr.key);
         const entityAttr = guess.entity.attributes.find(a => a.key === attr.key);
-        if (!comparison || !entityAttr) return;
-        
+        if (!comparison || !entityAttr) return null;
+
         const tooltip = comparison.match === 'close' && attr.closeFnName
           ? closeHints[attr.closeFnName as CloseFunctionName]
           : undefined;
@@ -144,7 +145,7 @@ const GuessRow = ({ guess } : { guess: Guess }) => {
             key={attr.key}
             className="flip-container"
           >
-            <div className={`flip-card delay-${ind+1}`}>
+            <div className={`flip-card delay-${ind + 1}`}>
               <div className={`${EMPTY_CLASS} flip-back`} />
               <div
                 className={`
@@ -169,19 +170,19 @@ const GuessRow = ({ guess } : { guess: Guess }) => {
       })}
     </div>
   );
-}
+};
 
 const BoardRow = ({ guess, isCurrentGuess }: GuessRowProps) => {
-  if (guess){
-    return <GuessRow guess={guess} />
+  if (guess) {
+    return <GuessRow guess={guess} />;
   }
 
   // Render empty row
   if (!isCurrentGuess) {
-    return <EmptyRow />
+    return <EmptyRow />;
   }
 
-  return <SearchRow />
+  return <SearchRow />;
 };
 
 export default BoardRow;

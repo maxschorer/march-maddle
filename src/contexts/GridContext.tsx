@@ -1,7 +1,9 @@
+'use client';
+
 import { createContext, useContext, useState, useEffect } from 'react';
-import { Grid, GridAttribute } from '../types/Grid';
-import { Entity } from '../types/Entity';
-import { getAllEntities } from '../data/entities';
+import { Grid, GridAttribute } from '@/types/Grid';
+import { Entity } from '@/types/Entity';
+import { getAllEntities } from '@/data/entities';
 
 interface GridContextType {
   grid: Grid;
@@ -26,6 +28,7 @@ export function GridProvider({ children, grid }: GridProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showHowToPlay, setShowHowToPlayRaw] = useState(() => {
+    if (typeof window === 'undefined') return false;
     return !localStorage.getItem('hasVisited');
   });
 
@@ -71,11 +74,10 @@ export function GridProvider({ children, grid }: GridProviderProps) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useGrid() {
   const context = useContext(GridContext);
   if (context === undefined) {
     throw new Error('useGrid must be used within a GridProvider');
   }
   return context;
-} 
+}

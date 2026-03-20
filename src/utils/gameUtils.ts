@@ -1,6 +1,6 @@
-import { Entity } from '../types/Entity';
-import { AttributeComparison, Match, Direction } from '../types/Guess';
-import { GridAttribute } from '../types/Grid';
+import { Entity } from '@/types/Entity';
+import { AttributeComparison, Match, Direction } from '@/types/Guess';
+import { GridAttribute } from '@/types/Grid';
 
 function getEntityAttributeValue(entity: Entity, key: string): string | number {
   const attribute = entity.attributes.find(attr => attr.key === key);
@@ -14,7 +14,7 @@ export function compareAttributes(guessedEntity: Entity, targetEntity: Entity, g
   return gridAttributes.map(attribute => {
     const guessedValue = getEntityAttributeValue(guessedEntity, attribute.key);
     const targetValue = getEntityAttributeValue(targetEntity, attribute.key);
-    
+
     // Determine match type
     let match: Match;
     if (guessedValue === targetValue) {
@@ -46,25 +46,25 @@ export function formatNumber(num: number): string {
     return num.toString();
   }
   const thousands = (num / 1000).toFixed(1);
-  
+
   // Remove trailing .0 if present
-  const formatted = thousands.endsWith('.0') 
-    ? thousands.slice(0, -2) 
+  const formatted = thousands.endsWith('.0')
+    ? thousands.slice(0, -2)
     : thousands;
-    
+
   return `${formatted}K`;
 }
 
 // Format money values in a concise way
 export function formatMoney(value: number | string | null | undefined): string {
   if (value === null || value === undefined) return '';
-  
+
   const num = typeof value === 'string' ? parseFloat(value) : value;
-  
+
   if (isNaN(num)) return '';
-  
+
   const absNum = Math.abs(num);
-  
+
   // Format based on size
   if (absNum >= 1_000_000_000) {
     const billions = num / 1_000_000_000;

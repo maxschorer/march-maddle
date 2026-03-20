@@ -1,4 +1,6 @@
-import { useAuth } from '../contexts/AuthContext';
+'use client';
+
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginModalProps {
   isOpen: boolean;

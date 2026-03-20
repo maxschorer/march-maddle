@@ -1,5 +1,7 @@
-import { useGame } from "../contexts/GameContext";
-import { useGrid } from "../contexts/GridContext";
+'use client';
+
+import { useGame } from '@/contexts/GameContext';
+import { useGrid } from '@/contexts/GridContext';
 
 function GameHeader() {
   const { grid } = useGrid();
@@ -14,4 +16,4 @@ function GameHeader() {
   );
 }
 
-export default GameHeader; 
+export default GameHeader;

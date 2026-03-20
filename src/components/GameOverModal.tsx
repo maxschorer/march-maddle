@@ -1,12 +1,14 @@
+'use client';
+
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useGame } from '../contexts/GameContext';
-import { useGrid } from '../contexts/GridContext';
-import { useAuth } from '../contexts/AuthContext';
-import { getSupabaseImageUrl } from '../utils/storage';
-import { getPerformanceEmoji } from '../utils/emojiUtils';
-import { abbreviateState } from '../utils/stateAbbreviations';
-import { supabase } from '../lib/supabase';
+import { useRouter } from 'next/navigation';
+import { useGame } from '@/contexts/GameContext';
+import { useGrid } from '@/contexts/GridContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSupabaseImageUrl } from '@/utils/storage';
+import { getPerformanceEmoji } from '@/utils/emojiUtils';
+import { abbreviateState } from '@/utils/stateAbbreviations';
+import { createClient } from '@/lib/supabase/client';
 
 interface GameOverModalProps {
   switchToDate: (date: string) => void;
@@ -26,12 +28,11 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
   } = useGame();
   const { grid } = useGrid();
   const { user, signInWithGoogle } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [dbScore, setDbScore] = useState<{ score: number; streak: number } | null>(null);
 
-  // Compute or fetch score when modal shows
   useEffect(() => {
     if (!showGameOver || !gameWon) {
       setDbScore(null);
@@ -39,14 +40,14 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
     }
 
     if (!user || !gameId) {
-      // Logged out: compute client-side assuming same-day and streak of 1
       const unusedGuesses = grid.maxGuesses - guesses.length;
-      const score = 100 + (20 * unusedGuesses) + 50 + 10; // base + guess bonus + same-day + streak(1)
+      const score = 100 + (20 * unusedGuesses) + 50 + 10;
       setDbScore({ score, streak: 1 });
       return;
     }
 
     const loadScore = async () => {
+      const supabase = createClient();
       try {
         const { data } = await supabase
           .from('games')
@@ -54,13 +55,17 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
           .eq('id', gameId)
           .single();
 
-        if (data) {
-          setDbScore({ score: data.score || 0, streak: data.streak || 0 });
+        if (data && data.score != null) {
+          setDbScore({ score: data.score, streak: data.streak || 0 });
+          return;
         }
       } catch {
-        // score/streak columns may not exist yet — gracefully degrade
-        setDbScore(null);
+        // fall through to client-side calculation
       }
+      // Fallback: compute client-side (no same-day or streak info available)
+      const unusedGuesses = grid.maxGuesses - guesses.length;
+      const score = 100 + (20 * unusedGuesses);
+      setDbScore({ score, streak: 0 });
     };
 
     loadScore();
@@ -113,7 +118,7 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                 March Maddle #{gameNumber} is
               </h2>
             </div>
-            <button 
+            <button
               onClick={handleClose}
               className="absolute top-0 right-0 text-gray-400 hover:text-gray-600"
               aria-label="Close"
@@ -123,21 +128,21 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
               </svg>
             </button>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex flex-col items-center space-y-6 bg-white p-3 rounded-lg">
                 {/* Team Image */}
                 <div className="w-32 h-32 mx-auto mb-4">
-                  <img 
+                  <img
                     src={getSupabaseImageUrl("entities", targetEntity.imgPath)}
                     alt={targetEntity.name}
                     className="w-full h-full object-cover rounded-lg"
                   />
                 </div>
-                
+
                 {/* Team Name */}
                 <h2 className="text-2xl font-bold text-center mb-4">{targetEntity.name}</h2>
-                
+
                 {/* Attributes Grid */}
                 <div className="grid grid-cols-5 gap-4 w-full">
                   {grid.attributes.map(attr => {
@@ -148,7 +153,7 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                       <div key={attr.key} className="flex flex-col items-center">
                         <span className="text-xs font-semibold mb-1">{attr.displayName}</span>
                         {attr.displayType === 'photo' && entityAttr.img_path ? (
-                          <img 
+                          <img
                             src={getSupabaseImageUrl("attributes", entityAttr.img_path)}
                             alt={entityAttr.value}
                             className="w-full h-auto object-contain"
@@ -163,13 +168,12 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
                   })}
                 </div>
             </div>
-            
+
             {/* Score breakdown */}
             {gameWon && dbScore && (() => {
               const unusedGuesses = grid.maxGuesses - guesses.length;
               const guessBonus = 20 * unusedGuesses;
               const streakBonus = 10 * dbScore.streak;
-              // Derive same-day from total: score = 100 + guessBonus + sameDayBonus + streakBonus
               const sameDayBonus = dbScore.score - 100 - guessBonus - streakBonus === 50;
               return (
                 <div className="py-3 px-4 bg-gray-50 rounded-lg">
@@ -205,39 +209,37 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
               );
             })()}
 
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={shareResults}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
-              >
-                Share 🏀
-              </button>
-              {user ? (
+            <button
+              onClick={shareResults}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
+            >
+              Share 🏀
+            </button>
+
+            {user ? (
+              <div className="flex gap-3">
                 <button
-                  onClick={() => { handleClose(); navigate('/leaderboard'); }}
+                  onClick={() => { handleClose(); router.push('/leaderboard'); }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
                 >
                   🏆 Standings
                 </button>
-              ) : (
                 <button
-                  onClick={signInWithGoogle}
+                  onClick={() => { handleClose(); router.push('/season'); }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
                 >
-                  Save Score
+                  📅 Season
                 </button>
-              )}
-            </div>
-
-            {user && (
+              </div>
+            ) : (
               <button
-                onClick={() => { handleClose(); navigate('/season'); }}
-                className="w-full text-center text-orange-500 hover:text-orange-600 text-sm font-medium py-2 transition-colors"
+                onClick={signInWithGoogle}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-6 rounded-2xl transition duration-150 flex items-center justify-center"
               >
-                View Season Stats →
+                Save Score
               </button>
             )}
-            
+
             <p className="text-center text-gray-400 text-xs mt-1">
               Come back tomorrow for a new team!
             </p>

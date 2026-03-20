@@ -1,6 +1,8 @@
+'use client';
+
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UsernameModal() {
   const { user, profile, setProfile } = useAuth();
@@ -11,6 +13,8 @@ export default function UsernameModal() {
 
   if (!user || !profile) return null;
   if (profile.username || profile.leaderboard_opt_out) return null;
+
+  const supabase = createClient();
 
   const validate = (value: string): string | null => {
     if (value.length < 6) return 'Must be at least 6 characters';
@@ -100,7 +104,7 @@ export default function UsernameModal() {
             Choose a username
           </h2>
           <p className="text-gray-500 text-center text-sm mb-6">
-            This is how you'll appear on the leaderboard.
+            This is how you&apos;ll appear on the leaderboard.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -138,7 +142,7 @@ export default function UsernameModal() {
             disabled={saving}
             className="w-full text-center text-gray-400 hover:text-gray-600 text-xs mt-4 py-2 transition-colors"
           >
-            I don't want to be on the leaderboard
+            I don&apos;t want to be on the leaderboard
           </button>
         </div>
       </div>

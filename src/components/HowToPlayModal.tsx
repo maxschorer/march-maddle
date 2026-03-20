@@ -1,3 +1,5 @@
+'use client';
+
 import Modal from './Modal';
 
 interface HowToPlayModalProps {
@@ -12,13 +14,13 @@ const HowToPlayModal = ({ isOpen, onClose }: HowToPlayModalProps) => {
     <Modal isOpen={isOpen} title="How to Play" onClose={onClose}>
       <div className="space-y-6 max-h-[80vh] overflow-y-auto p-4 bg-white rounded-lg">
         <div className="space-y-4">
-          <p className="font-medium">Guess today's March Madness team in 6 tries!</p>
+          <p className="font-medium">Guess today&apos;s March Madness team in 6 tries!</p>
 
           <p>Each team has five attributes:</p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Region</strong> — East, West, South, or Midwest</li>
             <li><strong>Seed</strong> — Tournament seed (1-16)</li>
-            <li><strong>Conference</strong> — The team's conference (ACC, SEC, Big Ten, etc.)</li>
+            <li><strong>Conference</strong> — The team&apos;s conference (ACC, SEC, Big Ten, etc.)</li>
             <li><strong>State</strong> — Where the school is located</li>
             <li><strong>KenPom</strong> — KenPom ranking (1 = best)</li>
           </ul>
@@ -53,7 +55,7 @@ const HowToPlayModal = ({ isOpen, onClose }: HowToPlayModalProps) => {
         <div>
           <h2 className="text-lg font-bold mb-3">Season Tracking</h2>
           <p className="text-sm text-gray-700">
-            Sign in with Google to play past games you missed, track your win streak, and see your season stats. 
+            Sign in with Google to play past games you missed, track your win streak, and see your season stats.
             A new team drops every day from March 17 through April 6.
           </p>
         </div>
