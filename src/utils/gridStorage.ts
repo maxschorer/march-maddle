@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/AppShell';
 
 export interface GridStorageAPI {
-  initGame: (gridId: number, dailyTargetId: number, targetEntityId: number) => Promise<GameState>;
+  initGame: (gridId: number, dailyTargetId: number, targetEntityId: number, userId?: string) => Promise<GameState>;
   getGame: (dailyTargetId: number) => Promise<GameState | null>;
   submitGuess: (gameId: number, entityId: number) => Promise<{ gameOver: boolean; gameWon: boolean }>;
 }
@@ -81,12 +81,13 @@ export const supabaseGridStorage: GridStorageAPI = {
       gameWon: game?.is_winner ?? false,
     };
   },
-  async initGame(gridId: number, dailyTargetId: number): Promise<GameState> {
+  async initGame(gridId: number, dailyTargetId: number, _targetEntityId: number, userId?: string): Promise<GameState> {
     const supabase = createClient();
+    const uid = userId || (await supabase.auth.getUser()).data.user?.id;
     const { data, error } = await supabase
       .from('games')
       .insert({
-        user_id: (await supabase.auth.getUser()).data.user?.id,
+        user_id: uid,
         daily_target_id: dailyTargetId,
         grid_id: gridId,
       })

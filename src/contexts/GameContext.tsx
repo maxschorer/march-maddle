@@ -98,7 +98,7 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
             savedState = await migrateLocalGame(target.id, grid.id);
           }
           if (!savedState) {
-            savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id);
+            savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id, user.id);
           }
         } else {
           savedState = await gridStorage.getGame(target.id);
