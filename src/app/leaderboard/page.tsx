@@ -30,6 +30,7 @@ export default function Leaderboard() {
           .from('season_leaderboard')
           .select('*')
           .eq('grid_id', grid.id)
+          .order('total_score', { ascending: false })
           .limit(100);
 
         if (error) throw error;
