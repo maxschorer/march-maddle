@@ -61,10 +61,10 @@ export default function Leaderboard() {
   const loadSeasonBoard = async () => {
     if (!grid) return;
 
-    // Fetch completed games with DB-computed scores
+    // Fetch completed games
     const { data: games, error } = await supabase
       .from('public_games')
-      .select('user_id, is_winner, score')
+      .select('user_id, is_winner, num_guesses')
       .eq('grid_id', grid.id)
       .eq('is_complete', true);
 
@@ -93,7 +93,8 @@ export default function Leaderboard() {
       entry.gamesPlayed++;
       if (game.is_winner) {
         entry.gamesWon++;
-        entry.totalScore += game.score || 0;
+        // Compute base score from num_guesses (100 base + 20 per unused guess)
+        entry.totalScore += 100 + 20 * (6 - (game.num_guesses || 6));
       }
       userScores.set(game.user_id, entry);
     }
@@ -130,14 +131,14 @@ export default function Leaderboard() {
       return;
     }
 
-    // Fetch today's winning games with DB-computed scores
+    // Fetch today's winning games
     const { data: games, error } = await supabase
       .from('public_games')
-      .select('user_id, num_guesses, score, streak, updated_at')
+      .select('user_id, num_guesses, updated_at')
       .eq('daily_target_id', target.id)
       .eq('is_complete', true)
       .eq('is_winner', true)
-      .order('score', { ascending: false });
+      .order('num_guesses', { ascending: true });
 
     if (error) throw error;
     if (!games) return;
@@ -157,15 +158,18 @@ export default function Leaderboard() {
 
     const board: DailyEntry[] = games
       .filter(g => eligibleUsers.has(g.user_id))
-      .map((game, index) => ({
-        userId: game.user_id,
-        displayName: profileMap.get(game.user_id) || 'Anonymous',
-        numGuesses: game.num_guesses,
-        score: game.score || 0,
-        streak: game.streak || 0,
-        completedAt: game.updated_at,
-        rank: index + 1,
-      }));
+      .map((game, index) => {
+        const score = 100 + 20 * (6 - (game.num_guesses || 6));
+        return {
+          userId: game.user_id,
+          displayName: profileMap.get(game.user_id) || 'Anonymous',
+          numGuesses: game.num_guesses,
+          score,
+          streak: 0,
+          completedAt: game.updated_at,
+          rank: index + 1,
+        };
+      });
 
     setDailyBoard(board);
   };
