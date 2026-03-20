@@ -28,23 +28,13 @@ export default function Header() {
             <Link to="/" className="text-lg md:text-2xl font-bold whitespace-nowrap">
               <span className="text-orange-500">March</span> Maddle <span className="text-sm md:text-lg">🏀</span>
             </Link>
-            {user ? (
-              <Link
-                to="/leaderboard"
-                className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
-              >
-                <Trophy size={18} />
-                <span className="hidden md:inline">Standings</span>
-              </Link>
-            ) : (
-              <button
-                onClick={openLoginModal}
-                className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
-              >
-                <Trophy size={18} />
-                <span className="hidden md:inline">Standings</span>
-              </button>
-            )}
+            <Link
+              to="/leaderboard"
+              className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
+            >
+              <Trophy size={18} />
+              <span className="hidden md:inline">Standings</span>
+            </Link>
             {user ? (
               <Link
                 to="/season"
