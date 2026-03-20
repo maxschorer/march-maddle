@@ -1,7 +1,7 @@
-import { GameState } from '../types/Game';
-import { Entity } from '../types/Entity';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
+import { GameState } from '@/types/Game';
+import { Entity } from '@/types/Entity';
+import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/components/AppShell';
 
 export interface GridStorageAPI {
   initGame: (gridId: number, targetEntity: Entity, dailyTargetId: number | null) => Promise<GameState>;
@@ -50,6 +50,7 @@ export const localGridStorage: GridStorageAPI = {
 
 export const supabaseGridStorage: GridStorageAPI = {
   async getGame(dailyTargetId: number): Promise<GameState | null> {
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
     if (!userId) throw new Error('User not authenticated');
@@ -71,6 +72,7 @@ export const supabaseGridStorage: GridStorageAPI = {
     };
   },
   async updateGame(gameState: GameState): Promise<void> {
+    const supabase = createClient();
     const { guesses, gameWon, gameOver, id } = gameState;
     const { error } = await supabase
       .from('games')
@@ -85,6 +87,7 @@ export const supabaseGridStorage: GridStorageAPI = {
     if (error) throw error;
   },
   async initGame(gridId: number, targetEntity: Entity, dailyTargetId: number | null): Promise<GameState> {
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id;
     if (!userId) throw new Error('User not authenticated');

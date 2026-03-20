@@ -1,6 +1,8 @@
+'use client';
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Grid } from '../types/Grid';
-import { getGrids } from '../data/grids';
+import { Grid } from '@/types/Grid';
+import { getGrids } from '@/data/grids';
 
 interface AppContextType {
   grids: Grid[];
@@ -39,7 +41,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
   const context = useContext(AppContext);
   if (context === undefined) {

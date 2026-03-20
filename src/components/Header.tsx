@@ -1,7 +1,9 @@
-import { Link } from 'react-router-dom';
+'use client';
+
+import Link from 'next/link';
 import { useState, useRef, useEffect } from 'react';
 import { Calendar, HelpCircle, Trophy, User } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '@/components/AppShell';
 import HowToPlayModal from './HowToPlayModal';
 
 export default function Header() {
@@ -25,12 +27,12 @@ export default function Header() {
       <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white py-2 px-3 md:py-3 md:px-4 shadow-md border-b-2 border-orange-500">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3 md:gap-5">
-            <Link to="/" className="text-lg md:text-2xl font-bold whitespace-nowrap">
+            <Link href="/" className="text-lg md:text-2xl font-bold whitespace-nowrap">
               <span className="text-orange-500">March</span> Maddle <span className="text-sm md:text-lg">🏀</span>
             </Link>
             {user ? (
               <Link
-                to="/leaderboard"
+                href="/leaderboard"
                 className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
               >
                 <Trophy size={18} />
@@ -47,7 +49,7 @@ export default function Header() {
             )}
             {user ? (
               <Link
-                to="/season"
+                href="/season"
                 className="flex items-center gap-1.5 text-gray-300 hover:text-white transition-colors text-base"
               >
                 <Calendar size={18} />
