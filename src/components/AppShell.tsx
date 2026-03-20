@@ -51,29 +51,17 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   const signInWithGoogle = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const redirectPath = `${window.location.pathname}${window.location.search}`;
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`;
-      console.log('[auth] signInWithOAuth redirectTo:', redirectTo);
-      console.log('[auth] supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo },
-      });
-      console.log('[auth] signInWithOAuth data.provider:', data?.provider);
-      console.log('[auth] signInWithOAuth data.url:', data?.url);
-      console.log('[auth] signInWithOAuth error:', error);
-      console.log('[auth] signInWithOAuth full data:', JSON.stringify(data));
-      if (error) throw error;
-      if (data?.url) {
-        console.log('[auth] redirecting to:', data.url);
-        window.location.href = data.url;
-      } else {
-        console.error('[auth] NO URL returned from signInWithOAuth');
-      }
-    } catch (err) {
-      console.error('[auth] signInWithGoogle error:', err);
+    const supabase = createClient();
+    const redirectPath = `${window.location.pathname}${window.location.search}`;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`,
+      },
+    });
+    if (error) throw error;
+    if (data?.url) {
+      window.location.href = data.url;
     }
   }, []);
 
