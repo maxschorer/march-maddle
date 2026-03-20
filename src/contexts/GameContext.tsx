@@ -110,7 +110,8 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
         setGameId(savedState.id);
 
         // Build full Guess objects from entity IDs
-        const fullGuesses = buildGuesses(savedState.guessedEntityIds, gridEntities, target.entity, grid);
+        const entityIds = savedState.guessedEntityIds || [];
+        const fullGuesses = buildGuesses(entityIds, gridEntities, target.entity, grid);
         setGuesses(fullGuesses);
         setGameOver(savedState.gameOver);
         setGameWon(savedState.gameWon);
