@@ -120,8 +120,8 @@ export default function UsernameModal() {
 
   return (
     <div
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 60 }}
       onClick={handleClose}
     >
       <div className="bg-white rounded-lg max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
