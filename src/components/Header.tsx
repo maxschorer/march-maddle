@@ -85,6 +85,13 @@ export default function Header() {
                 </button>
                 {isDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-36 bg-gray-900 rounded-md shadow-lg py-1 z-50 border border-gray-700">
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-800"
+                    >
+                      Profile
+                    </Link>
                     <button
                       onClick={() => { signOut(); setIsDropdownOpen(false); }}
                       className="block w-full text-left px-4 py-2 text-sm text-white hover:bg-gray-800"
