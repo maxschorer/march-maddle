@@ -107,47 +107,72 @@ export const supabaseGridStorage: GridStorageAPI = {
 // Migrate ALL localStorage games to Supabase for a given user
 export async function migrateAllLocalGames(userId: string): Promise<void> {
   const data = localStorage.getItem(STORAGE_KEY);
-  const games: GameState[] = data ? JSON.parse(data) : [];
-  if (games.length === 0) return;
+  if (!data) return;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawGames: any[] = JSON.parse(data);
+  if (rawGames.length === 0) return;
+
+  console.log('[migration] found', rawGames.length, 'local games to migrate');
 
   const supabase = createClient();
 
-  for (const localGame of games) {
-    if (!localGame.guessedEntityIds || localGame.guessedEntityIds.length === 0) continue;
+  for (const localGame of rawGames) {
+    // Handle both old format (guesses: Guess[]) and new format (guessedEntityIds: number[])
+    let entityIds: number[] = localGame.guessedEntityIds || [];
+    if (entityIds.length === 0 && Array.isArray(localGame.guesses)) {
+      // Old format: extract entity_ids from Guess objects
+      entityIds = localGame.guesses
+        .map((g: { entity?: { entity_id: number } }) => g?.entity?.entity_id)
+        .filter((id: number | undefined): id is number => id != null);
+    }
+    if (entityIds.length === 0) continue;
+
+    const gameId = localGame.id;
+    const gridId = localGame.gridId;
 
     try {
+      console.log('[migration] migrating game', gameId, 'with', entityIds.length, 'guesses');
+
       // Check if game already exists in Supabase
       const { data: existing } = await supabase
         .from('games')
         .select('id')
-        .eq('daily_target_id', localGame.id)
+        .eq('daily_target_id', gameId)
         .maybeSingle();
 
-      if (existing) continue; // Already migrated
+      if (existing) {
+        console.log('[migration] game', gameId, 'already exists, skipping');
+        continue;
+      }
 
       // Create the game
       const { data: newGame, error } = await supabase
         .from('games')
         .insert({
           user_id: userId,
-          daily_target_id: localGame.id,
-          grid_id: localGame.gridId,
+          daily_target_id: gameId,
+          grid_id: gridId,
         })
         .select()
         .single();
       if (error) {
-        console.error('Failed to migrate game:', localGame.id, error);
+        console.error('[migration] failed to create game:', gameId, error);
         continue;
       }
 
       // Insert all guesses (triggers handle completion + scoring)
-      for (const entityId of localGame.guessedEntityIds) {
-        await supabase
+      for (const entityId of entityIds) {
+        const { error: guessError } = await supabase
           .from('guesses')
           .insert({ game_id: newGame.id, entity_id: entityId });
+        if (guessError) {
+          console.error('[migration] failed to insert guess:', guessError);
+        }
       }
+      console.log('[migration] migrated game', gameId, 'successfully');
     } catch (err) {
-      console.error('Failed to migrate game:', localGame.id, err);
+      console.error('[migration] failed to migrate game:', gameId, err);
     }
   }
 
