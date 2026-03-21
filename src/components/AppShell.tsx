@@ -22,6 +22,8 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   isLoginModalOpen: boolean;
+  usernameModalOpen: boolean;
+  setUsernameModalOpen: (open: boolean) => void;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   openLoginModal: () => void;
@@ -49,6 +51,7 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
   const [user] = useState<User | null>(initialUser);
   const [profile, setProfile] = useState<Profile | null>(initialProfile);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [usernameModalOpen, setUsernameModalOpen] = useState(false);
 
   const signInWithGoogle = useCallback(async () => {
     const supabase = createClient();
@@ -80,6 +83,8 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
       profile,
       loading: false,
       isLoginModalOpen,
+      usernameModalOpen,
+      setUsernameModalOpen,
       signInWithGoogle,
       signOut,
       openLoginModal,

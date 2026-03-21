@@ -27,7 +27,7 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
     guesses,
   } = useGame();
   const { grid } = useGrid();
-  const { user, signInWithGoogle } = useAuth();
+  const { user, signInWithGoogle, usernameModalOpen } = useAuth();
   const router = useRouter();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -95,6 +95,7 @@ const GameOverModal = ({ switchToDate: _switchToDate }: GameOverModalProps) => {
 
   if (!showGameOver) return null;
   if (!targetEntity) return null;
+  if (usernameModalOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4 overflow-y-auto" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }} onClick={handleClose}>

@@ -3,38 +3,43 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/AppShell';
+import { getPSTDate } from '@/utils/dateUtils';
 
-const DISMISSED_KEY = 'marchMaddle_usernameDismissed';
+const DISMISSED_KEY = 'marchMaddle_usernameDismissedDate';
 
 export default function UsernameModal() {
-  const { user, profile, setProfile } = useAuth();
+  const { user, profile, setProfile, usernameModalOpen, setUsernameModalOpen } = useAuth();
   const [username, setUsername] = useState('');
   const [optOut, setOptOut] = useState(false);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
-  // Check if already dismissed this session
+  // On mount: decide if we should show the modal
   useEffect(() => {
-    if (typeof window !== 'undefined' && sessionStorage.getItem(DISMISSED_KEY)) {
-      setDismissed(true);
-    }
-  }, []);
+    if (!user || !profile) return;
+    if (profile.username || profile.leaderboard_opt_out) return;
 
-  if (!user || !profile) return null;
-  if (profile.username || profile.leaderboard_opt_out) return null;
-  if (dismissed) return null;
+    // Only show once per day
+    const today = getPSTDate();
+    const dismissedDate = localStorage.getItem(DISMISSED_KEY);
+    if (dismissedDate === today) return;
+
+    setUsernameModalOpen(true);
+  }, [user, profile, setUsernameModalOpen]);
+
+  if (!usernameModalOpen) return null;
 
   const supabase = createClient();
 
   const handleClose = () => {
-    sessionStorage.setItem(DISMISSED_KEY, '1');
-    setDismissed(true);
+    // Mark as dismissed for today
+    localStorage.setItem(DISMISSED_KEY, getPSTDate());
+    setUsernameModalOpen(false);
   };
 
   const validate = (value: string): string | null => {
-    if (!value) return null; // Allow empty if opting out
+    if (!value) return null;
     if (value.length < 6) return 'Must be at least 6 characters';
     if (value.length > 20) return 'Must be 20 characters or fewer';
     if (!/^[a-zA-Z0-9]+$/.test(value)) return 'Only letters and numbers';
@@ -46,7 +51,7 @@ export default function UsernameModal() {
       .from('profiles')
       .select('id')
       .ilike('username', value)
-      .neq('id', user.id)
+      .neq('id', user!.id)
       .limit(1);
     return !data || data.length === 0;
   };
@@ -59,11 +64,12 @@ export default function UsernameModal() {
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ leaderboard_opt_out: true, updated_at: new Date().toISOString() })
-        .eq('id', user.id);
+        .eq('id', user!.id);
       if (!updateError) {
-        setProfile({ ...profile, leaderboard_opt_out: true });
+        setProfile({ ...profile!, leaderboard_opt_out: true });
       }
       setSaving(false);
+      setUsernameModalOpen(false);
       return;
     }
 
@@ -93,7 +99,7 @@ export default function UsernameModal() {
     const { error: updateError } = await supabase
       .from('profiles')
       .update({ username: trimmed, updated_at: new Date().toISOString() })
-      .eq('id', user.id);
+      .eq('id', user!.id);
 
     if (updateError) {
       if (updateError.message.includes('unique') || updateError.message.includes('duplicate')) {
@@ -105,8 +111,9 @@ export default function UsernameModal() {
       return;
     }
 
-    setProfile({ ...profile, username: trimmed });
+    setProfile({ ...profile!, username: trimmed });
     setSaving(false);
+    setUsernameModalOpen(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
