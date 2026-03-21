@@ -8,7 +8,7 @@ import { GameState } from '@/types/Game';
 import { getTarget } from '@/data/entities';
 import { compareAttributes } from '@/utils/gameUtils';
 import { useGrid } from './GridContext';
-import { useGridStorage, migrateLocalGame } from '@/utils/gridStorage';
+import { useGridStorage, migrateLocalGame, migrateAllLocalGames } from '@/utils/gridStorage';
 import { useAuth } from '@/components/AppShell';
 import { getPerformanceEmoji } from '@/utils/emojiUtils';
 import { createClient } from '@/lib/supabase/client';
@@ -90,13 +90,13 @@ export function GameProvider({ children, gridEntities, grid, ds }: GameProviderP
         setTargetEntity(target.entity);
         setGameNumber(target.number);
 
-        // If user just signed in, try migrating localStorage game
+        // If user just signed in, migrate all localStorage games first
         let savedState = null;
         if (user) {
+          // Migrate all local games to Supabase (no-op if localStorage is empty)
+          await migrateAllLocalGames(user.id);
+
           savedState = await gridStorage.getGame(target.id);
-          if (!savedState) {
-            savedState = await migrateLocalGame(target.id, grid.id);
-          }
           if (!savedState) {
             savedState = await gridStorage.initGame(grid.id, target.id, target.entity.entity_id, user.id);
           }

@@ -104,23 +104,75 @@ export const supabaseGridStorage: GridStorageAPI = {
   }
 };
 
-export async function migrateLocalGame(dailyTargetId: number, gridId: number): Promise<GameState | null> {
+// Migrate ALL localStorage games to Supabase for a given user
+export async function migrateAllLocalGames(userId: string): Promise<void> {
+  const data = localStorage.getItem(STORAGE_KEY);
+  const games: GameState[] = data ? JSON.parse(data) : [];
+  if (games.length === 0) return;
+
+  const supabase = createClient();
+
+  for (const localGame of games) {
+    if (!localGame.guessedEntityIds || localGame.guessedEntityIds.length === 0) continue;
+
+    try {
+      // Check if game already exists in Supabase
+      const { data: existing } = await supabase
+        .from('games')
+        .select('id')
+        .eq('daily_target_id', localGame.id)
+        .maybeSingle();
+
+      if (existing) continue; // Already migrated
+
+      // Create the game
+      const { data: newGame, error } = await supabase
+        .from('games')
+        .insert({
+          user_id: userId,
+          daily_target_id: localGame.id,
+          grid_id: localGame.gridId,
+        })
+        .select()
+        .single();
+      if (error) {
+        console.error('Failed to migrate game:', localGame.id, error);
+        continue;
+      }
+
+      // Insert all guesses (triggers handle completion + scoring)
+      for (const entityId of localGame.guessedEntityIds) {
+        await supabase
+          .from('guesses')
+          .insert({ game_id: newGame.id, entity_id: entityId });
+      }
+    } catch (err) {
+      console.error('Failed to migrate game:', localGame.id, err);
+    }
+  }
+
+  // Clear localStorage after migration
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+// Migrate a single game and return its state
+export async function migrateLocalGame(dailyTargetId: number, gridId: number, userId: string): Promise<GameState | null> {
   const data = localStorage.getItem(STORAGE_KEY);
   const games: GameState[] = data ? JSON.parse(data) : [];
   const localGame = games.find((g) => g.id === dailyTargetId);
-  if (!localGame || localGame.guessedEntityIds.length === 0) return null;
+  if (!localGame || !localGame.guessedEntityIds || localGame.guessedEntityIds.length === 0) return null;
 
   const supabase = createClient();
   const { data: newGame, error } = await supabase
     .from('games')
     .insert({
-      user_id: (await supabase.auth.getUser()).data.user?.id,
+      user_id: userId,
       daily_target_id: dailyTargetId,
       grid_id: gridId,
     })
     .select()
     .single();
-  if (error) throw error;
+  if (error) return null;
 
   for (const entityId of localGame.guessedEntityIds) {
     await supabase
@@ -132,8 +184,9 @@ export async function migrateLocalGame(dailyTargetId: number, gridId: number): P
     .from('games')
     .select('is_winner, is_complete')
     .eq('id', newGame.id)
-    .single();
+    .maybeSingle();
 
+  // Remove this game from localStorage
   const updatedGames = games.filter((g) => g.id !== dailyTargetId);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedGames));
 
