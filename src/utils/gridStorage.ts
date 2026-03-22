@@ -106,13 +106,8 @@ export const supabaseGridStorage: GridStorageAPI = {
 
 // Migrate ALL localStorage games to Supabase for a given user
 export async function migrateAllLocalGames(userId: string): Promise<void> {
-  console.log('[migration] checking localStorage for games to migrate, userId:', userId);
   const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) {
-    console.log('[migration] no localStorage data found');
-    return;
-  }
-  console.log('[migration] raw localStorage:', data.substring(0, 200));
+  if (!data) return;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rawGames: any[] = JSON.parse(data);
