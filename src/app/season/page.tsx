@@ -7,6 +7,7 @@ import { useApp } from '@/contexts/AppContext';
 import { createClient } from '@/lib/supabase/client';
 import { getPSTDate } from '@/utils/dateUtils';
 import { getAllEntities } from '@/data/entities';
+import { getSupabaseImageUrl } from '@/utils/storage';
 
 interface SeasonStats {
   gamesPlayed: number;
@@ -21,6 +22,7 @@ interface DayResult {
   date: string;
   dayNumber: number;
   teamName: string;
+  teamImgPath: string;
   won: boolean;
   numGuesses: number;
   score: number;
@@ -65,7 +67,7 @@ export default function Season() {
 
         // Load entities to look up team names
         const entities = await getAllEntities(grid.id);
-        const entityMap = new Map(entities.map(e => [e.entity_id, e.name]));
+        const entityMap = new Map(entities.map(e => [e.entity_id, e]));
 
         const results: DayResult[] = [];
         let bestStreak = 0;
@@ -75,10 +77,12 @@ export default function Season() {
           for (const target of targets) {
             const game = games?.find(g => g.daily_target_id === target.id);
             if (game) {
+              const entity = entityMap.get(target.entity_id);
               results.push({
                 date: target.ds,
                 dayNumber: target.number,
-                teamName: entityMap.get(target.entity_id) || 'Unknown',
+                teamName: entity?.name || 'Unknown',
+                teamImgPath: entity?.imgPath || '',
                 won: game.is_winner,
                 numGuesses: game.num_guesses,
                 score: game.score || 0,
@@ -96,6 +100,7 @@ export default function Season() {
                 date: target.ds,
                 dayNumber: target.number,
                 teamName: '',
+                teamImgPath: '',
                 won: false,
                 numGuesses: 0,
                 score: 0,
@@ -225,7 +230,13 @@ export default function Season() {
               <div className="flex items-center gap-2">
                 {day.complete ? (
                   <>
-                    <span className="text-sm text-gray-500">{day.teamName}</span>
+                    {day.teamImgPath && (
+                      <img
+                        src={getSupabaseImageUrl("entities", day.teamImgPath)}
+                        alt={day.teamName}
+                        className="w-8 h-8 object-contain"
+                      />
+                    )}
                     {day.won ? (
                       <span className="text-xs font-medium text-green-600">{day.score} pts</span>
                     ) : (

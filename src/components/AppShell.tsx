@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { AppProvider } from "@/contexts/AppContext";
 import Header from "@/components/Header";
@@ -45,6 +46,34 @@ interface AppShellProps {
   children: ReactNode;
   initialUser: User | null;
   initialProfile: Profile | null;
+}
+
+function UsernameToast() {
+  const { user, profile } = useAuth();
+  const router = useRouter();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!user || !profile || profile.username || profile.leaderboard_opt_out || dismissed) {
+    return null;
+  }
+
+  return (
+    <div className="bg-orange-50 border-b border-orange-200 px-4 py-2 flex items-center justify-between">
+      <button
+        onClick={() => router.push('/profile')}
+        className="text-sm text-orange-600 font-medium hover:text-orange-700"
+      >
+        Create a username to appear on the standings! →
+      </button>
+      <button
+        onClick={() => setDismissed(true)}
+        className="text-gray-400 hover:text-gray-600 ml-2 text-lg leading-none"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
+    </div>
+  );
 }
 
 export default function AppShell({ children, initialUser, initialProfile }: AppShellProps) {
@@ -94,6 +123,7 @@ export default function AppShell({ children, initialUser, initialProfile }: AppS
       <AppProvider>
         <div className="min-h-screen bg-white text-black flex flex-col">
           <Header />
+          <UsernameToast />
           {children}
         </div>
         <LoginModal isOpen={isLoginModalOpen} onClose={closeLoginModal} />

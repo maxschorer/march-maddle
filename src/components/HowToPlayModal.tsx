@@ -48,15 +48,19 @@ const HowToPlayModal = ({ isOpen, onClose }: HowToPlayModalProps) => {
             <li>Start with a well-known team to narrow down the region and conference</li>
             <li>Use the arrows on Seed and KenPom to zero in</li>
             <li>If the state is green but the team is wrong, think about other schools in that state</li>
-            <li>There are 68 teams in the pool — all NCAA tournament teams</li>
+            <li>There are 64 teams in the pool — all NCAA tournament teams</li>
           </ul>
         </div>
 
         <div>
-          <h2 className="text-lg font-bold mb-3">Schedule Tracking</h2>
+          <h2 className="text-lg font-bold mb-3">Limited Time — March Madness Only 🏀</h2>
           <p className="text-sm text-gray-700">
+            March Maddle runs for 20 days during the NCAA Tournament — a new team every day from
+            the Round of 64 through the Championship Game. Once the tournament ends on April 6, it&apos;s over.
+            Play while it lasts!
+          </p>
+          <p className="text-sm text-gray-700 mt-2">
             Sign in with Google to play past games you missed, track your win streak, and see your season stats.
-            A new team drops every day from March 17 through April 6.
           </p>
         </div>
       </div>

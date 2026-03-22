@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/components/AppShell';
 import { createClient } from '@/lib/supabase/client';
+import { Pencil } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, profile, setProfile } = useAuth();
@@ -10,7 +11,7 @@ export default function ProfilePage() {
   const [optOut, setOptOut] = useState(profile?.leaderboard_opt_out || false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(!profile?.username);
 
   if (!user) {
     return (
@@ -63,7 +64,6 @@ export default function ProfilePage() {
 
     setSaving(true);
     setError('');
-    setSaved(false);
 
     const { error: updateError } = await supabase
       .from('profiles')
@@ -90,8 +90,7 @@ export default function ProfilePage() {
       leaderboard_opt_out: optOut,
     });
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setEditing(false);
   };
 
   return (
@@ -106,24 +105,57 @@ export default function ProfilePage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => {
-              setUsername(e.target.value);
-              if (error) setError('');
-            }}
-            placeholder="Username"
-            maxLength={20}
-            disabled={optOut}
-            className={`w-full border rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-              error ? 'border-red-400' : 'border-gray-300'
-            } ${optOut ? 'opacity-50' : ''}`}
-          />
-          {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-          <p className="text-gray-400 text-xs mt-1">
-            6-20 characters, letters and numbers only
-          </p>
+          {!editing ? (
+            <div className="flex items-center gap-2">
+              <p className="text-gray-500 text-sm">{profile.username || 'Not set'}</p>
+              <button onClick={() => setEditing(true)} aria-label="Edit username">
+                <Pencil size={14} className="text-gray-400 hover:text-orange-500 transition-colors" />
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (error) setError('');
+                }}
+                placeholder="Username"
+                maxLength={20}
+                autoFocus
+                disabled={optOut}
+                className={`w-full border rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                  error ? 'border-red-400' : 'border-gray-300'
+                } ${optOut ? 'opacity-50' : ''}`}
+              />
+              {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+              <p className="text-gray-400 text-xs">
+                6-20 characters, letters and numbers only
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    await handleSave();
+                  }}
+                  disabled={saving}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  {saving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(false);
+                    setUsername(profile.username || '');
+                    setError('');
+                  }}
+                  className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <label className="flex items-center gap-2 cursor-pointer">
@@ -135,14 +167,6 @@ export default function ProfilePage() {
           />
           <span className="text-sm text-gray-600">Don&apos;t show me on standings</span>
         </label>
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium py-3 px-6 rounded-lg transition-colors"
-        >
-          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save'}
-        </button>
       </div>
     </div>
   );

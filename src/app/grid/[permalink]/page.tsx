@@ -10,6 +10,32 @@ import GameOverModal from '@/components/GameOverModal';
 import GameHeader from '@/components/GameHeader';
 import { getPSTDate } from '@/utils/dateUtils';
 
+const TOURNAMENT_START = '2026-03-19';
+const TOURNAMENT_DAYS = 20;
+
+function CountdownBanner() {
+  const today = getPSTDate();
+  const dayNumber = Math.floor(
+    (new Date(today).getTime() - new Date(TOURNAMENT_START).getTime()) / 86400000
+  ) + 1;
+
+  if (dayNumber > TOURNAMENT_DAYS) {
+    return (
+      <p className="text-center text-sm text-gray-400 mb-2">
+        March Maddle is over — see you next year! 🏀
+      </p>
+    );
+  }
+
+  if (dayNumber < 1) return null;
+
+  return (
+    <p className="text-center text-sm text-gray-400 mb-2">
+      Day {dayNumber} of {TOURNAMENT_DAYS} — March Madness Edition 🏀
+    </p>
+  );
+}
+
 function GameContent({ switchToDate }: { switchToDate: (date: string) => void }) {
   const { isLoading } = useGame();
 
@@ -25,6 +51,7 @@ function GameContent({ switchToDate }: { switchToDate: (date: string) => void })
       )}
       <div className={`w-full p-4 ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
         <GameHeader />
+        <CountdownBanner />
         <GameBoard />
       </div>
       <GameOverModal switchToDate={switchToDate} />

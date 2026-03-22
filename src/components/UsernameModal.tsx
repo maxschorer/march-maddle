@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/components/AppShell';
 import { getPSTDate } from '@/utils/dateUtils';
+import { Pencil } from 'lucide-react';
 
 const DISMISSED_KEY = 'marchMaddle_usernameDismissedDate';
 
@@ -14,19 +15,17 @@ export default function UsernameModal() {
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
-  // On mount: decide if we should show the modal
+  // No longer auto-opens — username prompt is handled by the toast in AppShell
+
+  // When opening with an existing username, start in display mode
   useEffect(() => {
-    if (!user || !profile) return;
-    if (profile.username || profile.leaderboard_opt_out) return;
-
-    // Only show once per day
-    const today = getPSTDate();
-    const dismissedDate = localStorage.getItem(DISMISSED_KEY);
-    if (dismissedDate === today) return;
-
-    setUsernameModalOpen(true);
-  }, [user, profile, setUsernameModalOpen]);
+    if (usernameModalOpen && profile?.username) {
+      setUsername(profile.username);
+      setEditing(false);
+    }
+  }, [usernameModalOpen, profile?.username]);
 
   if (!usernameModalOpen) return null;
 
@@ -142,24 +141,36 @@ export default function UsernameModal() {
 
           <div className="space-y-4">
             <div>
-              <input
-                type="text"
-                value={username}
-                onChange={handleChange}
-                placeholder="Username"
-                maxLength={20}
-                autoFocus
-                disabled={optOut}
-                className={`w-full border rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                  error ? 'border-red-400' : 'border-gray-300'
-                } ${optOut ? 'opacity-50' : ''}`}
-              />
-              {error && (
-                <p className="text-red-500 text-xs mt-1">{error}</p>
+              {!editing && profile?.username ? (
+                <button
+                  onClick={() => setEditing(true)}
+                  className="w-full flex items-center justify-between border border-gray-300 rounded-lg px-4 py-3 hover:border-orange-400 transition-colors"
+                >
+                  <span className="text-gray-700 font-medium">{profile.username}</span>
+                  <Pencil size={16} className="text-gray-400" />
+                </button>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={handleChange}
+                    placeholder="Username"
+                    maxLength={20}
+                    autoFocus
+                    disabled={optOut}
+                    className={`w-full border rounded-lg px-4 py-3 text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                      error ? 'border-red-400' : 'border-gray-300'
+                    } ${optOut ? 'opacity-50' : ''}`}
+                  />
+                  {error && (
+                    <p className="text-red-500 text-xs mt-1">{error}</p>
+                  )}
+                  <p className="text-gray-400 text-xs mt-1">
+                    6-20 characters, letters and numbers only
+                  </p>
+                </>
               )}
-              <p className="text-gray-400 text-xs mt-1">
-                6-20 characters, letters and numbers only
-              </p>
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer">
@@ -173,11 +184,11 @@ export default function UsernameModal() {
             </label>
 
             <button
-              onClick={handleSave}
+              onClick={editing || !profile?.username ? handleSave : () => setUsernameModalOpen(false)}
               disabled={saving || checking}
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-medium py-3 px-6 rounded-lg transition-colors"
             >
-              {checking ? 'Checking...' : saving ? 'Saving...' : 'Save'}
+              {checking ? 'Checking...' : saving ? 'Saving...' : editing ? 'Save' : 'Done'}
             </button>
           </div>
         </div>
